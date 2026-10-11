@@ -1,0 +1,108 @@
+% =========================================================================
+% CAPÍTULO 2
+% =========================================================================
+\chapter{Marco Teórico Integral}
+
+Este capítulo reúne los fundamentos teóricos que sustentan la investigación. Se parte del contexto económico de las microfinanzas y de las SOFIPOs, se presentan los conceptos de riesgo crediticio y los indicadores regulatorios utilizados como variables del estudio, y se describen las herramientas econométricas y de aprendizaje automático empleadas para modelarlos, incluyendo el tratamiento del desbalance de clases y la interpretación de los modelos.
+
+\section{Microfinanzas: Teoría Económica y Contexto Mexicano}
+El Consultative Group to Assist the Poorest (CGAP) transformó la conceptualización de microfinanzas al articular que estas no se limitan a microcrédito sino que constituyen un ecosistema integral de servicios financieros: ahorro, crédito, seguros y transferencias. Esta visión reconoce que los hogares pobres experimentan ingresos altamente variables y requieren productos de protección contra shocks económicos idiosincráticos y covariantes.
+
+Un segundo aporte crítico de CGAP fue enfatizar la sostenibilidad financiera como prerrequisito, no meramente técnico sino moral: una institución que depende permanentemente de subsidios externos colapsará cuando estos se agoten. Un tercer aporte fue la postura pragmática de que el microcrédito no es siempre la solución adecuada para toda la población en condición de pobreza.
+
+Armendáriz y Morduch proporcionaron el andamiaje económico riguroso que explica por qué existen instituciones especializadas en microfinanzas. En mercados de crédito informal existe \textbf{selección adversa}: el prestatario conoce mejor que el prestamista su verdadera probabilidad de pago. Si el prestamista incrementa la tasa de interés para compensar el riesgo promedio, paradójicamente empeora la calidad del pool de solicitantes, porque los proyectos de menor riesgo se retiran del mercado, quedando únicamente quienes toleran tasas elevadas por asumir proyectos más riesgosos.
+
+El segundo problema es el \textbf{riesgo moral}: una vez otorgado el crédito, el incentivo del deudor a maximizar el esfuerzo puede debilitarse si el prestamista asume la mayor parte del riesgo a la baja. Las instituciones de microfinanzas mitigan ambos problemas mediante garantías solidarias de grupo, monitoreo social y ciclos de crédito de corta duración con renovación condicionada al buen historial de pago.
+
+La categoría regulatoria SOFIPO, creada en 2009, formalizó un sector que había evolucionado desde organizaciones no gubernamentales de los años noventa hacia sociedades anónimas comerciales durante la década de 2000 (siendo el caso paradigmático la conversión de Compartamos a banco comercial en 2005). En la actualidad operan decenas de SOFIPOs con estructuras heterogéneas: desde cajas de ahorro regionales de origen cooperativo hasta fintechs que utilizan la licencia SOFIPO para captación digital masiva.
+
+\section{Riesgo Crediticio: Teoría Financiera y Regulación}
+El riesgo crediticio se formaliza, siguiendo el marco de Basilea, como la pérdida económica esperada resultante del incumplimiento de un deudor:
+\begin{equation}
+PE = PD \times EAD \times LGD
+\label{eq:perdida_esperada}
+\end{equation}
+donde $PD \in [0,1]$ es la Probabilidad de Incumplimiento (\textit{Probability of Default}), $EAD \geq 0$ es la Exposición al momento del Incumplimiento (\textit{Exposure at Default}), medida en unidades monetarias, y $LGD \in [0,1]$ es la Severidad de la Pérdida (\textit{Loss Given Default}), es decir, la proporción de la exposición que no se recupera tras el incumplimiento. La Pérdida Esperada se provisiona contablemente; la variabilidad no esperada alrededor de este valor (Pérdida No Esperada) debe cubrirse con capital regulatorio.
+
+El indicador central de esta investigación es el Índice de Morosidad, definido como:
+\begin{equation}
+IMOR_t = \frac{\text{Cartera Vencida}_t}{\text{Cartera Vigente}_t + \text{Cartera Vencida}_t} \times 100
+\label{eq:imor}
+\end{equation}
+El IMOR mide la proporción de la cartera crediticia total que se encuentra en incumplimiento contractual en el periodo $t$. Es la variable objetivo (\textit{target}) tanto del problema de regresión continua como, tras su binarización, del problema de clasificación de insolvencia desarrollados en los Capítulos 5 y 6.
+
+Un segundo indicador regulatorio relevante es el Nivel de Capitalización:
+\begin{equation}
+NICAP_t = \frac{\text{Capital Neto}_t}{\text{Requerimientos Totales de Capital por Riesgo}_t} \times 100
+\label{eq:nicap}
+\end{equation}
+El NICAP mide la suficiencia patrimonial de la institución frente a los riesgos asumidos. La regulación mexicana establece categorías de intervención prudencial: NICAP $\geq 100\%$ (operación regular), $80\%$--$100\%$ (alerta preventiva, restricción de dividendos), $56\%$--$80\%$ (plan forzoso de capitalización) y NICAP $<56\%$ (causal legal de revocación de licencia).
+
+Basilea III, publicado tras la crisis financiera de 2008, elevó el capital ordinario mínimo (Tier 1 core) de 4\% a 6\% de activos ponderados por riesgo e introdujo colchones de capital contracíclicos (0--2.5\%) y métricas de liquidez (LCR, NSFR). En México, la CNBV adapta estos principios a las SOFIPOs mediante requerimientos de capitalización propios (típicamente 10--12\% de NICAP mínimo), sin exigir la implementación íntegra del marco de Basilea III, pero sí sistemas adecuados de gestión de riesgo crediticio, de mercado y operacional.
+
+\section{Econometría de Datos Panel y Series Temporales}
+Un modelo econométrico relaciona una variable dependiente $y$ con variables explicativas $\mathbf{x}$ bajo el marco general $y_i = \beta_0 + \sum_j \beta_j x_{ij} + \epsilon_i$, donde el término de error $\epsilon_i$ captura la variación no explicada por el modelo. La identificación causal requiere que el error sea ortogonal a los regresores, es decir, $\mathbb{E}[\epsilon_i | \mathbf{x}_i] = 0$. Cuando esta condición falla por variables omitidas correlacionadas con los regresores, el estimador de Mínimos Cuadrados Ordinarios es sesgado e inconsistente. La especificación apropiada del modelo, la validación de supuestos de no autocorrelación y homocedasticidad, y el contraste de hipótesis mediante pruebas de significancia estadística, son pilares del análisis econométrico riguroso.
+
+Una serie temporal $\{Y_t\}_{t=1}^T$ es débilmente estacionaria si su media $\mu = \mathbb{E}[Y_t]$ y su varianza $\sigma^2 = \text{Var}(Y_t)$ son constantes en el tiempo y su autocovarianza $\gamma(s) = \text{Cov}(Y_t, Y_{t+s})$ depende solo del rezago $s$, no de $t$. Las series no estacionarias, que exhiben tendencias deterministas o estocásticas, requieren diferenciación. Un proceso Autorregresivo Integrado de Media Móvil $ARIMA(p,d,q)$ integra diferenciación de orden $d$ para lograr estacionariedad, autorregresión de orden $p$, y media móvil de orden $q$ en la serie diferenciada. La Función de Autocorrelación (ACF) y Función de Autocorrelación Parcial (PACF) son herramientas diagnósticas esenciales para identificar los órdenes $(p,q)$ apropiados.
+
+Un panel de datos combina la dimensión transversal (instituciones $i=1,\dots,N$) con la dimensión temporal (trimestres $t=1,\dots,T$), permitiendo controlar heterogeneidad no observada entre instituciones y explotar variación tanto \textit{between} (diferencias entre instituciones) como \textit{within} (cambios a lo largo del tiempo dentro de cada institución). En esta investigación, $N=46$ instituciones y $T$ varía entre 6 y 40 trimestres según la institución, configurando un panel no balanceado. Los modelos panel con efectos fijos controlan heterogeneidad constante en el tiempo por institución; los modelos de efectos aleatorios asumen que la heterogeneidad es una variable aleatoria ortogonal a los regresores, permitiendo estimación más eficiente pero requiriendo mayor supuestos.
+
+Formalmente, un proceso $ARIMA(p,d,q)$ se expresa mediante el operador de retardos $L$ como:
+\begin{equation}
+\phi_p(L)(1-L)^d Y_t = c + \theta_q(L)\epsilon_t
+\label{eq:arima}
+\end{equation}
+Su extensión estacional $SARIMA(p,d,q)(P,D,Q)_s$ incorpora componentes autorregresivos y de media móvil en la frecuencia estacional $s$. Ambos modelos son univariados: se ajustan de manera independiente para cada institución y no incorporan información transversal ni variables macroeconómicas exógenas, lo que constituye su principal limitación frente a los enfoques panel desarrollados en esta tesis.
+
+\section{Aprendizaje Automático Supervisado}
+El aprendizaje automático supervisado busca aprender una función $\hat{f}: \mathbb{R}^p \to \mathbb{R}$ a partir de ejemplos etiquetados $\{(\mathbf{x}_i, y_i)\}_{i=1}^n$, de modo que la función generalice bien a datos nuevos no vistos durante el entrenamiento. Se distingue entre problemas de \textit{regresión}, donde $y_i$ es continua, y problemas de \textit{clasificación}, donde $y_i$ es discreta. La capacidad de generalización depende del balance entre sesgo (error sistemático por especificación inadecuada del modelo) y varianza (sensibilidad a fluctuaciones aleatorias en los datos de entrenamiento). La validación cruzada y la partición temporal en problemas de series temporales son mecanismos para estimar la capacidad de generalización sin contaminar el conjunto de prueba.
+
+\subsection{Árboles de Decisión y Métodos de Ensamble}
+Un árbol de decisión es un modelo interpretable que recursivamente particiona el espacio de variables en regiones rectangulares, asignando a cada región una predicción constante. Los árboles individuales tienden a sobreajustarse si se permite que crezcan sin restricción. Los métodos de ensamble combinan múltiples árboles débiles para crear un predictor fuerte. El Gradient Boosting entrena árboles secuencialmente, donde cada árbol se ajusta a los residuos del árbol anterior, minimizando una función de pérdida regularizada. Random Forest entrena árboles en paralelo sobre muestras bootstrap del conjunto de datos, reduciendo varianza mediante promediado. Estos métodos capturan automáticamente interacciones no lineales entre variables sin requerir especificación explícita, lo que los hace valiosos para problemas con relaciones complejas.
+
+LightGBM (Ke et al., 2017) acelera el entrenamiento mediante crecimiento de árboles por hoja (\textit{leaf-wise}) y muestreo \textit{Gradient-based One-Side Sampling}. Random Forest (Breiman, 2001) construye un ensamble de árboles independientes sobre muestras \textit{bootstrap} con selección aleatoria de variables en cada partición, reduciendo varianza a costa de un sesgo ligeramente mayor que el boosting secuencial. Ambos se utilizan en esta tesis como comparativos directos de XGBoost, descrito a continuación.
+
+\subsection{Extreme Gradient Boosting (XGBoost)}
+XGBoost (Chen y Guestrin, 2016) construye un ensamble aditivo de $M$ árboles de regresión:
+\begin{equation}
+\hat{y}_i = \sum_{m=1}^M f_m(\mathbf{x}_i), \qquad f_m \in \mathcal{F}
+\end{equation}
+En cada iteración se minimiza una función de pérdida regularizada mediante expansión de Taylor de segundo orden:
+\begin{equation}
+\mathcal{L}^{(t)} \approx \sum_{i=1}^n \left[g_i f_t(\mathbf{x}_i) + \tfrac{1}{2} h_i f_t^2(\mathbf{x}_i)\right] + \gamma T + \tfrac{1}{2}\lambda \sum_{j=1}^T w_j^2
+\end{equation}
+donde $g_i, h_i$ son el gradiente y hessiano de la pérdida respecto a la predicción anterior, y $\gamma, \lambda$ penalizan la complejidad estructural del árbol. XGBoost es la técnica seleccionada como modelo principal de regresión en esta tesis por su capacidad de capturar interacciones no lineales entre variables contables y macroeconómicas sin imponer supuestos paramétricos restrictivos, a costa de menor interpretabilidad directa (mitigada mediante SHAP, Sección \ref{sec:shap}).
+
+\subsection{Redes Neuronales Recurrentes y Arquitecturas LSTM}
+Las redes neuronales recurrentes (RNN) procesan secuencias de entrada mediante un estado oculto $h_t$ actualizado recursivamente: $h_t = \sigma(W_{hx} x_t + W_{hh} h_{t-1} + b_h)$. Esta arquitectura captura dependencias temporales pero sufre el desvanecimiento del gradiente en secuencias largas: durante el entrenamiento, los gradientes se multiplican repetidamente por matrices de peso, decayendo exponencialmente a cero. Una celda LSTM (Hochreiter y Schmidhuber, 1997) resuelve esto mediante un mecanismo de memoria con compuertas que regulan el flujo de información:
+\begin{align}
+f_t &= \sigma(W_f[h_{t-1},x_t]+b_f) &&\text{(compuerta de olvido)}\\
+i_t &= \sigma(W_i[h_{t-1},x_t]+b_i) &&\text{(compuerta de entrada)}\\
+o_t &= \sigma(W_o[h_{t-1},x_t]+b_o) &&\text{(compuerta de salida)}
+\end{align}
+El estado de celda evoluciona como $C_t = f_t \odot C_{t-1} + i_t \odot \tanh(W_C[h_{t-1},x_t]+b_C)$, donde $\odot$ es producto elemento a elemento. La compuerta de olvido decide qué información antigua descartar; la de entrada, qué información nueva incorporar; la de salida, qué información pasar al siguiente paso. Esta arquitectura es altamente efectiva en problemas de secuencia de horizonte largo. En esta tesis, aunque LSTM se discute como herramienta prospectiva para capturar dependencias temporales complejas en horizontes múltiples, no fue posible entrenar una arquitectura LSTM formal con el volumen de datos panel disponible (1189 observaciones sobre 46 instituciones) sin incurrir en sobreajuste severo; su implementación se reserva para trabajo futuro con mayor profundidad temporal por institución (véase Capítulo 10).
+
+\subsection{Generalización Apilada (Stacking)}
+El Stacking (Wolpert, 1992) combina las predicciones de $M$ modelos base de nivel 0 mediante un meta-modelo de nivel 1:
+\begin{equation}
+P(\text{Default}=1\mid\mathbf{x}) = \sigma\left(\beta_0 + \sum_{m=1}^M \beta_m f_m(\mathbf{x})\right)
+\end{equation}
+En esta tesis, los modelos base son Random Forest, XGBoost y LightGBM, y el meta-modelo es una regresión logística entrenada sobre predicciones \textit{out-of-fold} obtenidas mediante validación cruzada de 5 particiones, evitando fuga de información del conjunto de entrenamiento hacia el meta-modelo.
+
+\subsection{Explicabilidad: Valores de Shapley (SHAP)}
+\label{sec:shap}
+SHAP (Lundberg y Lee, 2017) adapta la solución de Shapley (1953) para juegos cooperativos al aprendizaje automático, descomponiendo la predicción de una instancia como:
+\begin{equation}
+f(\mathbf{x}) = \phi_0 + \sum_{j=1}^M \phi_j(\mathbf{x})
+\end{equation}
+donde $\phi_0=\mathbb{E}[f(\mathbf{x})]$ y $\phi_j$ es la contribución marginal promedio de la variable $j$ sobre todas las posibles coaliciones. Es importante subrayar, como se retoma en el Capítulo 7, que SHAP cuantifica \textbf{asociación estadística dentro del modelo entrenado}, no relaciones causales en el sistema económico subyacente.
+
+\section{Desbalance de Clases y Remuestreo SMOTE-ENN}
+En problemas de clasificación binaria, cuando la distribución de clases es altamente desigual (una clase representa el 1-5\% de los datos, mientras la otra domina), los algoritmos de aprendizaje automático tienden a favorecer la clase mayoritaria, produciendo clasificadores con alto \textit{accuracy} pero incapaces de detectar la clase minoritaria de interés. Este desbalance es particularmente problemático en aplicaciones de riesgo crediticio, donde los eventos de incumplimiento son por naturaleza raros pero de alto costo. Las estrategias para mitigarlo se dividen en tres enfoques: métodos de remuestreo (sobremuestreo de la clase minoritaria, submuestreo de la mayoritaria, o ambos), métodos de ponderación (asignar pesos mayores a la clase minoritaria durante el entrenamiento), y métodos de ensamble (combinar modelos entrenados en muestras balanceadas). Esta investigación adopta una estrategia híbrida de remuestreo combinado con validación en el conjunto de prueba sin modificación, como se detalla en el Capítulo 3.
+
+Dentro de los métodos de remuestreo, el sobremuestreo sintético SMOTE (Chawla et al., 2002) genera observaciones artificiales de la clase minoritaria mediante interpolación lineal entre vecinos cercanos:
+\begin{equation}
+\mathbf{x}_{\text{sintético}} = \mathbf{x}_i + \delta(\mathbf{x}_{zi}-\mathbf{x}_i), \quad \delta \sim \mathcal{U}(0,1)
+\end{equation}
+La depuración ENN (Wilson, 1972) elimina posteriormente observaciones cuya etiqueta difiere de la mayoría de sus vecinos más cercanos, produciendo fronteras de decisión más limpias. Como se documenta en el Capítulo 6, en el conjunto de entrenamiento de esta investigación la clase minoritaria (\textit{Default}) representaba ya un 49.1\% de las observaciones antes del remuestreo —un desbalance moderado, no severo—, por lo que el efecto de SMOTE-ENN fue principalmente de depuración de frontera más que de generación masiva de sintéticos.
+

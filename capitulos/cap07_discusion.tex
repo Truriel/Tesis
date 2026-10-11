@@ -1,0 +1,17 @@
+% =========================================================================
+% CAPÍTULO 7
+% =========================================================================
+\chapter{Discusión de Resultados}
+
+En este capítulo se interpretan los resultados del Capítulo 6 a la luz de las hipótesis planteadas y se discuten los riesgos metodológicos, las fortalezas y las limitaciones del estudio.
+
+\section{Interpretación de Hallazgos}
+Los resultados sustentan parcialmente la hipótesis H1: los modelos panel de aprendizaje automático (XGBoost, $R^2=0.6126$) ofrecen una capacidad de generalización across-institución que ningún modelo univariado puede replicar, en particular para instituciones de historia corta donde ARIMA/SARIMA son inaplicables. Sin embargo, en términos de error absoluto puro sobre instituciones consolidadas, ARIMA univariado presenta menor MAE, por lo que la superioridad de los modelos panel debe entenderse como una superioridad de \textbf{cobertura y generalización}, no como una superioridad estricta y universal del error puntual.
+
+Respecto al efecto de las variables macroeconómicas, y contrario a resultados reportados en versiones preliminares no verificadas, el análisis SHAP reproducido muestra que las variables macroeconómicas contribuyen de forma secundaria (encabezadas por la inflación) frente al peso dominante de la propia historia institucional del IMOR y del NICAP. Esto es consistente con un horizonte de predicción corto (un trimestre): a ese plazo, la inercia contable domina sobre el entorno macroeconómico, cuyo efecto es previsiblemente más relevante a horizontes más largos, no evaluados en esta tesis.
+
+\section{Riesgos Metodológicos, Fortalezas y Limitaciones}
+Se realizó una revisión explícita del código para descartar fuentes de \textit{leakage}: (i) la partición train/test es estrictamente cronológica (\texttt{shuffle=False}); (ii) el remuestreo SMOTE-ENN se aplica únicamente sobre el conjunto de entrenamiento, después de la partición, evitando que observaciones sintéticas basadas en el conjunto de prueba contaminen la evaluación; (iii) los rezagos y medias móviles se calculan exclusivamente con información disponible hasta el periodo $t$, y la variable objetivo se construye mediante desplazamiento hacia adelante (\texttt{shift(-1)}) dentro de cada institución, evitando mezclar información de una institución con otra. No se identificó \textit{target leakage} directo. El principal riesgo residual es la validación cruzada de 5 particiones utilizada dentro del Stacking, que —al no ser estrictamente temporal— podría introducir una sobreestimación leve del desempeño reportado en el conjunto de entrenamiento (no en el conjunto de prueba final, que permanece aislado cronológicamente en todo momento).
+
+\textbf{Fortalezas:} pipeline reproducible extremo a extremo; validación temporal correctamente implementada; documentación explícita de una anomalía de datos (NICAP) en lugar de su ocultamiento; interpretabilidad mediante SHAP. \textbf{Limitaciones:} variables macroeconómicas sintéticas en esta ejecución; horizonte de predicción limitado a un trimestre; tamaño muestral moderado (1189 observaciones) para un modelo de boosting con múltiples hiperparámetros, lo que exige cautela ante el riesgo de sobreajuste al reentrenar con datos futuros.
+

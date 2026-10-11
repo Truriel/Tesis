@@ -1,0 +1,73 @@
+% =========================================================================
+% CAPÍTULO 5
+% =========================================================================
+\chapter{Análisis Exploratorio de Datos}
+
+Las figuras de este capítulo se generaron ejecutando directamente el pipeline de datos reales descrito en el Capítulo 3 y en el Anexo C; no se trata de gráficas ilustrativas sino de la salida real del código sobre el panel de 1690 observaciones (126 instituciones).
+
+\section{Comportamiento del IMOR}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{fig01_distribucion_imor.png}
+\caption{Distribución del Índice de Morosidad (IMOR) sobre el panel bruto de 1690 observaciones institución-trimestre. Fuente: elaboración propia con base en datos CNBV.}
+\label{fig:dist_imor}
+\end{figure}
+La distribución (Figura \ref{fig:dist_imor}) es fuertemente asimétrica a la derecha, con media de \textit{14.56\%} y desviación estándar de \textit{19.04\%} sobre un rango observado de 0\% a 100\%. La elevada dispersión confirma la heterogeneidad estructural del sector: coexisten instituciones con carteras sanas, con IMOR cercano a cero, con otras en estados de deterioro extremo, con IMOR de 100\% (cartera íntegramente vencida), reflejando episodios de instituciones en proceso de revocación de licencia documentados en boletines oficiales.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig02_evolucion_imor.png}
+\caption{Evolución temporal del IMOR promedio sectorial con banda de $\pm 1$ desviación estándar, 2015--2025. Fuente: elaboración propia con base en datos CNBV.}
+\label{fig:evol_imor}
+\end{figure}
+La Figura \ref{fig:evol_imor} muestra la trayectoria del IMOR promedio del sector junto con su dispersión transversal. La amplitud de la banda de dispersión, consistentemente mayor que el nivel medio, refuerza la conclusión de heterogeneidad: no existe un ``ciclo de morosidad sectorial'' único, sino trayectorias muy distintas entre instituciones que un modelo panel debe aprender a discriminar mediante variables idiosincráticas (rezagos propios) más que mediante una tendencia común.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{fig06_boxplot_instituciones.png}
+\caption{Distribución del IMOR para las 10 SOFIPOs con mayor historia disponible en el panel. Fuente: elaboración propia.}
+\label{fig:boxplot}
+\end{figure}
+La comparación entre instituciones (Figura \ref{fig:boxplot}) evidencia diferencias sustanciales tanto en el nivel central como en la dispersión del IMOR, lo que justifica metodológicamente el uso de rezagos institución-específicos (en lugar de, por ejemplo, únicamente el promedio sectorial) como predictor dominante, hallazgo que se confirma cuantitativamente en el análisis de importancia de variables del Capítulo 6.
+
+\section{Evolución del NICAP}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{fig03_evolucion_nicap.png}
+\caption{Evolución temporal del Nivel de Capitalización (NICAP) promedio. Fuente: elaboración propia con base en datos CNBV.}
+\label{fig:evol_nicap}
+\end{figure}
+
+\begin{tcolorbox}[title=Nota Metodológica: Atipicidad en la Variable NICAP]
+El promedio simple del NICAP reportado en el boletín crudo de la CNBV asciende a \textbf{88{,}627\%}, cifra evidentemente no representativa de una razón de capitalización típica. El análisis de la columna revela que, si bien la mediana es de 218.5\% y el rango intercuartílico va de 147\% a 568\% —valores razonables para instituciones de microfinanzas—, existen observaciones extremas de hasta $4.97\times10^{7}\%$ en un número reducido de instituciones, previsiblemente asociadas a activos ponderados por riesgo cercanos a cero o errores de captura en el boletín oficial. Esta anomalía se documenta explícitamente, tal como exige el rigor científico, y se trata mediante rezagos y medias robustas en el pipeline de modelado en lugar de eliminarse arbitrariamente, evitando así both la omisión de un hallazgo relevante y la distorsión de las métricas de los modelos, que utilizan el NICAP como predictor (no como variable a promediar directamente para fines descriptivos).
+\end{tcolorbox}
+
+\section{Variables Macroeconómicas y Correlaciones}
+La Figura \ref{fig:macro} presenta la evolución de las variables macroeconómicas incorporadas al panel durante el periodo de estudio.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{fig04_variables_macro.png}
+\caption{Evolución de las variables macroeconómicas incorporadas al panel (TIIE 28, inflación, IGAE, tipo de cambio). Fuente: elaboración propia; series generadas de forma sintética determinista ante la indisponibilidad del token de Banxico (véase Sección \ref{sec:limitaciones}).}
+\label{fig:macro}
+\end{figure}
+
+Por su parte, la Figura \ref{fig:corr} muestra la matriz de correlación entre las variables del panel de modelado.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig05_correlaciones.png}
+\caption{Matriz de correlación de las variables del panel de modelado. Fuente: elaboración propia.}
+\label{fig:corr}
+\end{figure}
+La matriz confirma, como es esperable, una fuerte autocorrelación entre el IMOR contemporáneo y sus rezagos y medias móviles (coeficientes superiores a 0.7), mientras que las correlaciones entre el IMOR y las variables macroeconómicas son de magnitud moderada, consistente con el hecho de que estas últimas afectan la morosidad de forma indirecta y con rezago, y de forma heterogénea entre instituciones.
+
+\section{Conclusiones del Análisis Exploratorio}
+El análisis exploratorio confirma tres hechos estilizados que justifican las decisiones metodológicas de los capítulos subsecuentes:
+
+\begin{enumerate}
+    \item \textit{Heterogeneidad estructural entre instituciones:} El IMOR exhibe variación dramática entre instituciones (desde IMOR cercano a cero hasta 100\%), reflejada en la amplitud de la banda de desviación estándar. Esta heterogeneidad invalida modelos sectoriales agregados y justifica explícitamente un enfoque panel que capture dinámicas idiosincráticas.
+
+    \item \textit{Dominancia de la historia institucional:} La autocorrelación alta entre el IMOR contemporáneo y sus rezagos (>0.7), junto con la importancia relativa de variables como medias móviles, evidencia que la trayectoria histórica de deterioro de cada institución es la señal predictiva más fuerte, superando a variables macroeconómicas contemporáneas en el horizonte de un trimestre.
+
+    \item \textit{Anomalía de calidad de datos:} La variable NICAP presenta valores extremos (hasta $4.97\times10^7\%$) que sugieren errores de captura en la fuente oficial. Esta anomalía se documenta explícitamente aquí, se trata mediante estadística robusta en el modelado, y se mantiene en el análisis en lugar de ser eliminada arbitrariamente, reflejando un compromiso con la reproducibilidad y la transparencia científica.
+\end{enumerate}
+

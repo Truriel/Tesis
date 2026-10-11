@@ -1,0 +1,67 @@
+% =========================================================================
+% CAPÍTULO 1
+% =========================================================================
+\chapter{Introducción y Marco de Contexto}
+
+En economías contemporáneas, la arquitectura del sistema financiero trasciende la gran banca comercial. Existe un estrato fundamental de intermediarios no bancarios que atiende segmentos históricamente excluidos. En México, este rol lo cumplen las Sociedades Financieras Populares (SOFIPOs), reguladas por la Comisión Nacional Bancaria y de Valores (CNBV) bajo la Ley de Ahorro y Crédito Popular (LACP).
+
+Las SOFIPOs operan en un entorno de alta volatilidad estructural. Sus acreditados carecen frecuentemente de historiales crediticios formales, poseen ingresos fluctuantes vinculados a la economía informal, y son vulnerables a choques macroeconómicos exógenos. Cuando estos factores convergen adversamente, la cartera se deteriora rápidamente, elevando el Índice de Morosidad (IMOR). Este fenómeno de deterioro acelerado se ha documentado en episodios de crisis microfinanciera en México, como los casos de Ficrea en 2014, Caja Sierra Gorda y Operadora de Recursos Reforma, que evidenciaron la insuficiencia de sistemas de análisis estático para anticipar procesos de pérdida rápida de calidad crediticia.
+
+\section{Antecedentes del Problema}
+Las SOFIPOs fueron constituidas legalmente a partir de la Ley de Ahorro y Crédito Popular (2001) como sociedades anónimas de capital variable, distinguiéndose de las Sociedades Cooperativas de Ahorro y Préstamo (SOCAPs) de naturaleza mutualista. Esta estructura les confiere mayor dinamismo comercial para captar capital privado y expandir su presencia territorial o digital. La CNBV supervisa actualmente un universo heterogéneo que combina instituciones tradicionales de presencia física regional con una nueva generación de entidades de base tecnológica que han adquirido o transformado licencias de SOFIPO para captar recursos del público mediante plataformas digitales.
+Sistemas tradicionales de auditoría y revisión estática de razones financieras reaccionan con rezago ante dinámicas aceleradas de crisis microfinancieras. La historia financiera mexicana reciente ha registrado episodios críticos en el sector de intermediarios financieros populares que evidenciaron que el análisis contable trimestral, por sí solo, resulta insuficiente para anticipar procesos de deterioro acelerado. Estos episodios subrayan la necesidad de instrumentos de alerta más sensibles y oportunos que integren información histórica de la propia institución con variables de contexto macroeconómico.
+
+La Figura \ref{fig:ishikawa} sintetiza, mediante un diagrama de Ishikawa (causa-efecto), las categorías de factores que contribuyen a que el deterioro financiero de una SOFIPO no sea detectado oportunamente por los esquemas de supervisión tradicionales.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_ishikawa_mejorado.png}
+\caption{Diagrama de causa-efecto (Ishikawa) de la detección tardía de deterioro financiero en SOFIPOs. Fuente: elaboración propia.}
+\label{fig:ishikawa}
+\end{figure}
+
+\section{Planteamiento del Problema}
+La inexistencia, en el sector SOFIPO, de herramientas automatizadas de alerta temprana basadas en aprendizaje automático que permitan anticipar crisis de liquidez y solvencia con suficiente antelación constituye el problema central de esta investigación. Sus causas incluyen: dependencia de razones contables estáticas, ausencia de integración sistemática de variables macroeconómicas, y falta de validación estadística rigurosa que evite el uso indebido de información futura. Sus consecuencias incluyen intervención tardía por parte del regulador, pérdidas patrimoniales para ahorradores, y erosión de la confianza pública en el sector.
+
+\section{Pregunta de Investigación}
+
+\textbf{Pregunta principal:} ¿En qué medida la integración de modelos econométricos de datos panel y técnicas de aprendizaje automático supervisado permite mejorar la predicción del riesgo crediticio futuro y la identificación temprana de deterioro financiero e insolvencia en las SOFIPOs mexicanas, comparado contra métodos univariados de la econometría clásica?
+
+\textbf{Preguntas secundarias:}
+\begin{enumerate}
+    \item ¿Los algoritmos de aprendizaje automático en especificaciones panel multivariadas superan en capacidad de generalización y cobertura institucional a los modelos econométricos univariados clásicos como ARIMA y SARIMA en la predicción del IMOR futuro?
+    \item ¿Cuáles variables financieras contables y macroeconómicas contribuyen en mayor magnitud a la predicción del riesgo crediticio futuro, y cuáles de estas contribuciones reflejan relaciones espurias versus relaciones económicamente fundadas?
+    \item ¿Es posible construir un clasificador de insolvencia crítica que logre simultáneamente sensibilidad elevada, precisión adecuada e interpretabilidad por variables, de modo que sea útil para fines de supervisión regulatoria sin requerir sistemas computacionales de complejidad prohibitiva?
+\end{enumerate}
+
+\section{Justificación}
+\textit{Académica:} integra econometría de series temporales, aprendizaje automático y finanzas cuantitativas en un marco unificado y reproducible. \textit{Financiera:} provee herramientas objetivas de cuantificación de riesgo para instituciones con recursos limitados de análisis interno. \textit{Tecnológica:} demuestra la viabilidad de arquitecturas de datos modernas para el procesamiento eficiente de paneles heterogéneos en supervisión financiera. \textit{Social:} protege el ahorro popular al anticipar crisis institucionales. \textit{Regulatoria:} ofrece a la CNBV un prototipo de sistema de alerta temprana complementario a la supervisión tradicional.
+
+\section{Objetivos}
+\textbf{Objetivo general:} diseñar, desarrollar y validar empíricamente un sistema cuantitativo de alerta temprana que integre modelos econométricos de series temporales y algoritmos de aprendizaje automático supervisado para predecir el deterioro financiero e insolvencia de las SOFIPOs mexicanas a partir de información regulatoria y macroeconómica pública.
+
+\textbf{Objetivos específicos:}
+\begin{enumerate}
+    \item Construir un pipeline reproducible de limpieza, imputación e ingeniería de características que integre información regulatoria trimestral de la CNBV y variables macroeconómicas de referencia para el período 2015--2025.
+    \item Desarrollar y comparar modelos tradicionales de series temporales contra algoritmos de aprendizaje automático para la predicción del riesgo crediticio futuro, incluyendo un análisis exploratorio riguroso que justifique la selección de variables y estructuras de modelado.
+    \item Diseñar clasificadores de insolvencia crítica robustos que integren técnicas de remuestreo híbrido y ensambles, con interpretabilidad mediante valores de Shapley para garantizar transparencia regulatoria.
+    \item Proponer una arquitectura operacionalizable de sistema de alerta temprana que combine el poder predictivo de múltiples modelos con interpretabilidad, validación temporal rigurosa y reproducibilidad íntegra del código y los datos.
+\end{enumerate}
+
+\section{Hipótesis}
+\textbf{H0:} No existe diferencia estadísticamente relevante en la capacidad predictiva del deterioro financiero de las SOFIPOs entre los modelos econométricos univariados tradicionales y los modelos de aprendizaje automático multivariados en datos panel.
+
+\textbf{H1:} La utilización de modelos de aprendizaje automático multivariados en datos panel mejora la capacidad predictiva del deterioro financiero de las SOFIPOs frente a los modelos econométricos univariados tradicionales.
+
+\textbf{Hipótesis secundaria} (H1a): La incorporación explícita de variables macroeconómicas exógenas como la Tasa de Interés Interbancaria de Equilibrio, inflación, el Indicador Global de la Actividad Económica y tipo de cambio mejora la capacidad discriminante de los clasificadores de insolvencia crítica respecto a especificaciones basadas exclusivamente en variables contables internas.
+
+\section{Alcance y Limitaciones}
+\label{sec:limitaciones}
+La investigación se circunscribe al universo de SOFIPOs mexicanas reportantes ante la CNBV entre el primer trimestre de 2015 y el tercer trimestre de 2025. Tras el proceso de limpieza descrito en el Capítulo 3, el panel bruto comprende 126 instituciones con estatus ``En operación'' (1690 observaciones institución-trimestre) y el panel final de modelado, tras exigir historia mínima e información completa de rezagos, comprende 46 instituciones (1189 observaciones). El horizonte predictivo modelado es de un trimestre hacia adelante ($t+1$). Dentro de este alcance, la investigación presenta las siguientes limitaciones:
+\begin{itemize}
+    \item \textbf{Nota crítica sobre variables macroeconómicas:} Las variables macroeconómicas utilizadas en el panel de esta implementación son series generadas de forma determinista como sustituto de la API oficial de Banco de México, dado que el token de acceso no resultó disponible en el entorno de ejecución. Esta limitación implica que los valores exactos de TIIE, inflación e IGAE reportados en esta tesis no corresponden a observaciones oficiales verificadas del regulador. Para cualquier aplicación regulatoria futura, es \textbf{imperativo} sustituir estas series por datos oficiales de Banxico mediante su API pública o distribuciones autorizadas. El pipeline metodológico es robusto a esta sustitución y los resultados de validación temporal permanecerían válidos tras la incorporación de series oficiales.
+    \item La columna oficial ``Nivel de Capitalización'' del boletín de la CNBV presenta valores atípicos extremos (hasta $4.97\times10^{7}\%$) en un número reducido de observaciones, lo que sugiere errores de captura o casos de instituciones con activos ponderados por riesgo cercanos a cero; esta anomalía se documenta explícitamente en el Capítulo 5 y se trata mediante estadística robusta.
+    \item El horizonte de predicción se limita a un trimestre; no se evalúa la capacidad predictiva a horizontes más largos.
+    \item Los resultados corresponden a un periodo de relativa estabilidad regulatoria; su desempeño ante un choque sistémico extremo no puede garantizarse sin evidencia adicional.
+\end{itemize}
+

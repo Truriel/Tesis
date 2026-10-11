@@ -1,0 +1,9 @@
+% =========================================================================
+% CAPÍTULO 9
+% =========================================================================
+\chapter{Implementación y Aplicación Práctica}
+
+Una implementación en producción requeriría: automatización de la ingesta trimestral (parseo de boletines CNBV), almacenamiento incremental en Parquet, reentrenamiento periódico (recomendado: anual, o ante evidencia de \textit{drift}), monitoreo de \textit{data drift} (cambios en la distribución de las variables de entrada) y \textit{model drift} (degradación del desempeño predictivo en el tiempo), y un proceso de gobernanza que documente cada versión del modelo y su desempeño histórico.
+
+En materia de seguridad y gobernanza, el acceso a las predicciones a nivel institución debe restringirse a personal supervisor autorizado, dado su carácter sensible; los datos agregados sectoriales pueden difundirse públicamente sin dicha restricción.
+

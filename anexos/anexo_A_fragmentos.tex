@@ -1,0 +1,44 @@
+% =========================================================================
+% ANEXO A: FRAGMENTOS COMENTADOS DEL PIPELINE
+% =========================================================================
+\chapter*{Anexo A: Fragmentos Comentados del Pipeline Real}
+\addcontentsline{toc}{chapter}{Anexo A: Fragmentos Comentados del Pipeline}
+
+Los siguientes fragmentos corresponden al script \texttt{ejecutar\_pipeline\_completo.py}, ejecutado de manera real sobre \texttt{sofipo\_base\_completa.parquet} para producir todas las figuras y métricas de los Capítulos 5 y 6 de esta tesis.
+
+\begin{lstlisting}[language=Python, caption={Ingeniería de características panel (fragmento real)}]
+df_pl = df_pl.with_columns([
+    pl.col("IMOR 1/ (%)").shift(1).over("Nombre").alias("IMOR_lag1"),
+    pl.col("IMOR 1/ (%)").shift(2).over("Nombre").alias("IMOR_lag2"),
+    pl.col("IMOR 1/ (%)").shift(3).over("Nombre").alias("IMOR_lag3"),
+    pl.col("IMOR 1/ (%)").rolling_mean(window_size=3, min_periods=1).over("Nombre").alias("IMOR_ma3"),
+    pl.col("IMOR 1/ (%)").rolling_mean(window_size=6, min_periods=1).over("Nombre").alias("IMOR_ma6"),
+])
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Entrenamiento XGBoost con validación temporal (fragmento real)}]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, shuffle=False, random_state=SEED)
+
+grid_xgb = GridSearchCV(
+    xgb.XGBRegressor(objective="reg:squarederror", random_state=SEED),
+    param_grid={"n_estimators": [100, 200], "max_depth": [3, 5, 7],
+                "learning_rate": [0.01, 0.05, 0.1]},
+    cv=TimeSeriesSplit(n_splits=5),
+    scoring="neg_root_mean_squared_error", n_jobs=-1)
+grid_xgb.fit(X_train, y_train)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Stacking + SMOTE-ENN (fragmento real)}]
+sampler = SMOTEENN(random_state=SEED)
+X_train_res, y_train_res = sampler.fit_resample(X_train, y_train)
+
+stacking_clf = StackingClassifier(
+    estimators=[("rf", RandomForestClassifier(n_estimators=100, random_state=SEED,
+                                               class_weight="balanced")),
+                ("xgb", xgb.XGBClassifier(eval_metric="logloss", random_state=SEED)),
+                ("lgb", lgb.LGBMClassifier(random_state=SEED, verbose=-1))],
+    final_estimator=LogisticRegression(), cv=5)
+stacking_clf.fit(X_train_res, y_train_res)
+\end{lstlisting}
+

@@ -1,0 +1,87 @@
+% =========================================================================
+% PORTADA OFICIAL
+% =========================================================================
+\includepdf[pages=-]{PORTADA.pdf}
+
+% =========================================================================
+% DEDICATORIA
+% =========================================================================
+\chapter*{Dedicatoria}
+\addcontentsline{toc}{chapter}{Dedicatoria}
+A nuestras familias y mentores que creyeron en este proyecto. A los usuarios y ahorradores del sector financiero popular en México, cuya tenacidad impulsa la búsqueda de herramientas cuantitativas más seguras y transparentes.
+
+% =========================================================================
+% AGRADECIMIENTOS
+% =========================================================================
+\chapter*{Agradecimientos}
+\addcontentsline{toc}{chapter}{Agradecimientos}
+Expresamos nuestra más sincera gratitud a nuestros directores de tesis, cuya guía, orientación y retroalimentación fueron fundamentales para la realización de este trabajo. Agradecemos también a los profesores de la Escuela Superior de Física y Matemáticas (ESFM) por su formación académica rigurosa, y a nuestras familias por su apoyo incondicional durante este proceso de investigación. Su confianza y motivación constante fueron esenciales para llevar esta tesis a término.
+
+% =========================================================================
+% RESUMEN
+% =========================================================================
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+Las Sociedades Financieras Populares (SOFIPOs) en México constituyen intermediarios financieros críticos para la inclusión de segmentos históricamente marginados del sistema bancario tradicional. Esta tesis desarrolla un sistema cuantitativo híbrido de alerta temprana que unifica econometría de series temporales de panel con algoritmos modernos de aprendizaje automático supervisado. Utilizando datos regulatorios oficiales de la CNBV correspondientes a 126 instituciones en operación durante el período 2015--2025 (1690 observaciones institución-trimestre depuradas), se construyó una arquitectura de procesamiento que permite análisis eficiente de paneles heterogéneos. Las variables macroeconómicas utilizadas en esta implementación fueron generadas de forma determinista ante la indisponibilidad de acceso oficial; para aplicación regulatoria futura, estas serían sustituidas por series verificadas de Banco de México.
+
+Tras la ingeniería de características (rezagos, medias móviles, ratios financieros), el panel de modelado quedó constituido por 1189 observaciones sobre 46 instituciones con historia suficiente. El modelo XGBoost, seleccionado mediante búsqueda de hiperparámetros con validación cruzada temporal, alcanzó un coeficiente de determinación ($R^2$) de \textit{0.6126} sobre el conjunto de prueba fuera de muestra, con un Error Absoluto Medio (MAE) de \textit{3.29\%}, superando a LightGBM ($R^2=0.5756$) y resultando comparable a Random Forest ($R^2=0.5804$).
+
+Para la tarea de clasificación de insolvencia crítica (IMOR futuro $>10\%$), se entrenó un ensamble apilado de Random Forest, XGBoost y LightGBM asistido por remuestreo híbrido SMOTE-ENN, obteniendo una exactitud de \textit{88.65\%}, precisión de \textit{70.00\%}, sensibilidad de \textit{82.35\%}, $F_1$ de \textit{0.7568}, área bajo la curva ROC de \textit{0.9148} y coeficiente de correlación de Matthews de \textit{0.6873}. Mediante valores de Shapley (SHAP) se identificó que el rezago del propio IMOR, el rezago del Nivel de Capitalización y el rezago del Resultado Neto son los predictores individuales de mayor peso, seguidos por la inflación y el IGAE entre las variables macroeconómicas. Todos los resultados fueron reproducidos de manera independiente a partir del código y los datos disponibles para este trabajo.
+
+\textbf{Palabras clave:} SOFIPO, riesgo crediticio, alerta temprana, XGBoost, SMOTE-ENN, SHAP, DuckDB, Polars, econometría de panel, insolvencia.
+
+% =========================================================================
+% ABSTRACT
+% =========================================================================
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+Popular Financial Companies (SOFIPOs) in Mexico are pivotal grassroots financial intermediaries serving populations historically excluded from commercial banking. This thesis develops a hybrid quantitative Early Warning System (EWS) that unifies panel time-series econometrics with modern supervised machine learning. Using official CNBV regulatory data for 126 operating institutions over 2015--2025 (1690 cleaned institution-quarter observations), a columnar processing architecture enables efficient analysis of heterogeneous panels. Macroeconomic variables were generated as a deterministic proxy in this implementation due to API access limitations; future regulatory deployment would incorporate verified Banxico data.
+
+After feature engineering (lags, moving averages, financial ratios), the modeling panel comprised 1189 observations across 46 institutions with sufficient history. The XGBoost regressor, selected via time-series cross-validated hyperparameter search, achieved an out-of-sample $R^2$ of \textit{0.6126} with a Mean Absolute Error of \textit{3.29\%}, outperforming LightGBM ($R^2=0.5756$) and matching Random Forest ($R^2=0.5804$).
+
+For binary critical-insolvency classification (future NPL ratio $>10\%$), a Stacking Ensemble of Random Forest, XGBoost and LightGBM with SMOTE-ENN resampling attained \textit{88.65\%} accuracy, \textit{70.00\%} precision, \textit{82.35\%} recall, an $F_1$ of \textit{0.7568}, ROC-AUC of \textit{0.9148}, and a Matthews Correlation Coefficient of \textit{0.6873}. Shapley (SHAP) value decomposition identified the institution's own lagged NPL ratio, lagged capitalization level, and lagged net income as the strongest individual predictors, followed by inflation and the economic activity index among macroeconomic drivers. All findings were independently reproduced from the code and data available for this study.
+
+\textbf{Keywords:} Microfinance, credit risk, early warning systems, XGBoost, Stacking Ensemble, SHAP, panel econometrics, insolvency, non-performing loans.
+
+% =========================================================================
+% LISTA DE ABREVIATURAS
+% =========================================================================
+\chapter*{Lista de Abreviaturas}
+\addcontentsline{toc}{chapter}{Lista de Abreviaturas}
+\begin{description}[leftmargin=3cm,style=nextline]
+\item[AI / IA] Artificial Intelligence / Inteligencia Artificial
+\item[ARIMA] Autoregressive Integrated Moving Average
+\item[CNBV] Comisión Nacional Bancaria y de Valores
+\item[EAD] Exposure at Default
+\item[ENN] Edited Nearest Neighbors
+\item[IGAE] Indicador Global de la Actividad Económica
+\item[IMOR] Índice de Morosidad
+\item[INPC] Índice Nacional de Precios al Consumidor
+\item[LGD] Loss Given Default
+\item[LSTM] Long Short-Term Memory
+\item[MAE] Mean Absolute Error
+\item[MCC] Matthews Correlation Coefficient
+\item[ML] Machine Learning
+\item[NICAP] Nivel de Capitalización
+\item[PD] Probability of Default
+\item[RMSE] Root Mean Square Error
+\item[RNN] Recurrent Neural Network
+\item[ROA] Return on Assets
+\item[ROC-AUC] Area Under the Receiver Operating Characteristic Curve
+\item[R\textsuperscript{2}] Coeficiente de Determinación
+\item[SARIMA] Seasonal ARIMA
+\item[SHAP] SHapley Additive exPlanations
+\item[SMOTE] Synthetic Minority Over-sampling Technique
+\item[SOFIPO] Sociedad Financiera Popular
+\item[TIIE] Tasa de Interés Interbancaria de Equilibrio
+\item[VaR] Value at Risk
+\item[XGBoost] Extreme Gradient Boosting
+\end{description}
+
+\newpage
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+

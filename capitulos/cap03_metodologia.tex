@@ -1,0 +1,83 @@
+% =========================================================================
+% CAPÍTULO 3
+% =========================================================================
+\chapter{Marco Metodológico}
+
+Este capítulo describe el diseño de la investigación, el conjunto de datos utilizado, la operacionalización de las variables, el proceso de preparación de datos, los modelos entrenados con su esquema de validación temporal y las métricas con las que se evalúa su desempeño.
+
+\section{Paradigma, Enfoque y Diseño de Investigación}
+La investigación se inscribe en el paradigma positivista con enfoque cuantitativo, apoyado en el empirismo estadístico y la reproducibilidad computacional. El diseño es no experimental (las variables no se manipulan deliberadamente), longitudinal de datos panel (dimensión transversal de instituciones y temporal de trimestres) y de alcance explicativo-predictivo.
+
+\section{Conjunto de Datos}
+La población objetivo corresponde a la totalidad de SOFIPOs reportantes ante la CNBV entre 2015 y 2025 (151 nombres distintos identificados en el boletín estadístico oficial). Tras el filtro de estatus ``En operación'' y la depuración de valores nulos en variables clave (IMOR, Activo Total, Cartera Vigente), el panel bruto de trabajo comprende \textbf{126 instituciones} y \textbf{1690 observaciones institución-trimestre}. Tras exigir un mínimo de 6 observaciones consecutivas por institución (necesario para construir de manera consistente los rezagos de orden 3 y las medias móviles de 6 periodos) y eliminar registros sin variable objetivo futura, el panel final de modelado comprende \textbf{46 instituciones} y \textbf{1189 observaciones}. El periodo cubierto por los datos disponibles abarca del primer trimestre de 2015 al tercer trimestre de 2025, y la información proviene de las siguientes fuentes:
+\begin{itemize}
+    \item \textbf{CNBV:} Boletín estadístico de Sociedades Financieras Populares (variable dependiente IMOR, NICAP, activos, cartera, resultado neto y demás partidas contables).
+    \item \textbf{Variables macroeconómicas:} TIIE 28, inflación (INPC), tipo de cambio USD/MXN, Cetes 28 e IGAE. En la ejecución reproducida para esta tesis dichas series se generaron de forma sintética determinista ante la indisponibilidad del token de acceso a la API de Banco de México incluido en el script original (véase limitación explícita en la Sección \ref{sec:limitaciones} y nota metodológica en el Capítulo 5).
+\end{itemize}
+
+\section{Variables y Operacionalización}
+
+La selección de variables responde a dos criterios principales: relevancia teórica según el marco de riesgo crediticio de Basilea y disponibilidad de datos en los boletines trimestrales de la CNBV. Las variables se agrupan en tres categorías: \textit{targets} (variables a predecir), \textit{variables contables internas} (características financieras de cada institución) y \textit{variables macroeconómicas} (contexto externo). La especificación incluye rezagos (para capturar dependencia temporal) y medias móviles (para suavizar fluctuaciones de corto plazo), reduciendo ruido mientras se preserva información predictiva.
+
+\begin{table}[H]
+\centering
+\caption{Matriz de Operacionalización de Variables}
+\label{tab:variables}
+\small
+\begin{tabularx}{\textwidth}{p{2.6cm}p{1.6cm}Xp{1.6cm}p{2cm}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Definición} & \textbf{Fuente} & \textbf{Función} \\
+\midrule
+IMOR$_{t+1}$ & Continua & Cartera vencida / Cartera total, trimestre siguiente & CNBV & Target (regresión) \\
+Default$_{t+1}$ & Binaria & $\mathbb{I}(\text{IMOR}_{t+1}>10\%)$ & CNBV & Target (clasificación) \\
+IMOR$_{t}$, IMOR\_lag1--3 & Continua & Valor actual y rezagos de orden 1--3 del IMOR & CNBV & Predictor \\
+IMOR\_ma3, IMOR\_ma6 & Continua & Media móvil de 3 y 6 trimestres del IMOR & CNBV & Predictor \\
+NICAP$_t$ & Continua & Capital neto / requerimientos de capital & CNBV & Predictor \\
+ROA$_t$ & Continua & Resultado neto / activo total & CNBV & Predictor \\
+Ratio\_Cartera$_t$ & Continua & Cartera vigente / activo total & CNBV & Predictor \\
+TIIE\_28$_t$ & Continua & Tasa interbancaria de equilibrio a 28 días & Banxico (sintética en esta réplica) & Predictor macro \\
+Inflación$_t$ & Continua & Variación del INPC & Banxico (sintética) & Predictor macro \\
+IGAE$_t$ & Continua & Índice de actividad económica & Banxico (sintética) & Predictor macro \\
+USD/MXN$_t$ & Continua & Tipo de cambio FIX & Banxico (sintética) & Predictor macro \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Preparación de Datos: ETL}
+El proceso de extracción, transformación y carga (ETL) se implementó en dos capas. La \textit{capa de limpieza} utiliza consultas SQL vectorizadas directamente sobre el archivo de datos, normalizando valores faltantes codificados como \texttt{'n.a.'}, \texttt{'n.d.'} o \texttt{'-'} mediante operaciones de validación de tipo e imputación de valores nulos mediante la media histórica de la propia institución. La \textit{capa de ingeniería de características} calcula, de forma vectorizada y particionada por institución, los rezagos temporales, medias móviles y ratios financieros descritos en la Tabla \ref{tab:variables}. El énfasis en procesamiento vectorizado garantiza eficiencia computacional y reproducibilidad del pipeline en diferentes escalas de datos. El Listado \ref{lst:limpieza} muestra el fragmento correspondiente a la limpieza e imputación.
+
+\begin{lstlisting}[language=Python, caption={Limpieza e imputación con DuckDB (fragmento real del pipeline ejecutado)}, label={lst:limpieza}]
+query_imputed = f"""
+    SELECT Nombre, Periodo, Estatus,
+    COALESCE("IMOR 1/ (%)_raw",
+             AVG("IMOR 1/ (%)_raw") OVER (PARTITION BY Nombre)) AS "IMOR 1/ (%)"
+    FROM cleaned_temp
+    WHERE Estatus ILIKE '%En operaci%'
+"""
+df_cleaned = con.execute(query_imputed).pl()
+\end{lstlisting}
+
+\section{Modelos Entrenados y Validación Temporal}
+Se entrenaron y compararon dos familias de modelos: \textit{modelos univariados clásicos} (ARIMA y SARIMA, ajustados independientemente para cada institución mediante pronóstico rodante) que sirven como referencia de la econometría tradicional, y \textit{modelos panel multivariados} (XGBoost, LightGBM y Random Forest) que aprovechan la información conjunta del panel para generalizar a instituciones de historia corta. Para la tarea de clasificación de insolvencia crítica, se entrenó un ensamble Stacking (combinación de Random Forest, XGBoost y LightGBM con un meta-regresor logístico) precedido de remuestreo SMOTE-ENN aplicado \textbf{únicamente sobre el conjunto de entrenamiento}, para evitar contaminar el conjunto de prueba con observaciones sintéticas. La búsqueda de hiperparámetros se realizó mediante búsqueda en grilla sobre validación cruzada temporal, garantizando que cada pliegue respeta el orden cronológico.
+
+Es metodológicamente inadmisible en series temporales realizar una partición aleatoria train/test, pues ello introduciría información futura (\textit{lookahead bias}) en el entrenamiento, haciendo que el modelo optimice sobre información que no estaría disponible en el momento de predicción. Por ello, la partición train/test se realiza de forma \textit{cronológica}, reservando el 80\% inicial de las observaciones (ordenadas por período) para entrenamiento y el 20\% final para prueba. La selección de hiperparámetros se valida mediante validación cruzada temporal con cinco particiones, donde cada pliegue respeta el orden cronológico: se entrena sobre datos pasados y se valida sobre un bloque futuro inmediato, garantizando que ninguna información futura contamina el conjunto de entrenamiento.
+
+\section{Métricas de Evaluación}
+Para la tarea de predicción continua del IMOR futuro, se utilizan tres métricas complementarias:
+\begin{align}
+MAE &= \frac{1}{n}\sum_{i=1}^n |y_i-\hat{y}_i| \quad \text{(Error Absoluto Medio)}\\
+RMSE &= \sqrt{\frac{1}{n}\sum_{i=1}^n (y_i-\hat{y}_i)^2} \quad \text{(Raíz del Error Cuadrático Medio)}\\
+R^2 &= 1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2} \quad \text{(Coeficiente de Determinación)}
+\end{align}
+El MAE tiene interpretación en unidades originales (porcentaje de morosidad); el RMSE penaliza errores grandes; el $R^2$ cuantifica la proporción de varianza explicada por el modelo. Un $R^2$ cercano a uno indica un modelo que captura la mayor parte de la variabilidad; un $R^2$ cercano a cero indica un modelo apenas mejor que la media.
+
+Para la clasificación binaria de insolvencia crítica, se reportan cinco métricas que capturan diferentes aspectos del desempeño:
+\begin{align}
+\text{Accuracy} &= \frac{TP+TN}{TP+TN+FP+FN} \quad \text{(proporción correcta total)}\\
+\text{Precision} &= \frac{TP}{TP+FP} \quad \text{(de quiénes predigo Default, cuántos realmente incumpen)}\\
+\text{Recall} &= \frac{TP}{TP+FN} \quad \text{(de los Defaults reales, cuántos identifico)}\\
+F_1 &= 2\cdot\frac{\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recall}} \quad \text{(media armónica)}\\
+MCC &= \frac{TP\cdot TN - FP\cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}} \quad \text{(coef. de correlación)}
+\end{align}
+El MCC es particularmente informativo en presencia de desbalance de clases porque incorpora los cuatro cuadrantes de la matriz de confusión de forma simétrica, a diferencia de la exactitud simple, que puede ser engañosamente alta si el clasificador favorece la clase mayoritaria. En aplicaciones de riesgo crediticio, el Recall (sensibilidad) es especialmente crítico: es preferible alertar sobre insolvencias que no ocurrieron (falsos positivos) que dejar pasar instituciones en riesgo real (falsos negativos).
+

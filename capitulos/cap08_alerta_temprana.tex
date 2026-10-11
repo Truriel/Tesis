@@ -1,0 +1,15 @@
+% =========================================================================
+% CAPÍTULO 8
+% =========================================================================
+\chapter{Sistema de Alerta Temprana}
+
+El sistema propuesto ingiere los boletines trimestrales de la CNBV, ejecuta el pipeline de limpieza e ingeniería de características, genera una probabilidad de \textit{Default} mediante el clasificador Stacking, y clasifica a cada institución en un nivel de riesgo:
+\begin{itemize}
+    \item \textbf{Riesgo bajo (verde):} probabilidad predicha $<0.30$.
+    \item \textbf{Riesgo moderado (amarillo):} probabilidad entre 0.30 y 0.55.
+    \item \textbf{Riesgo alto (rojo):} probabilidad $>0.55$.
+\end{itemize}
+Estos umbrales son una propuesta operativa basada en la distribución de probabilidades observada en la Figura \ref{fig:probdist}; su calibración final requeriría validación conjunta con el área de supervisión de la CNBV y no debe interpretarse como un estándar regulatorio ya adoptado.
+
+En cuanto al flujo de decisión, ante una alerta roja, se recomienda: (i) revisión prioritaria por parte del supervisor de área; (ii) solicitud de plan de fortalecimiento de capital si el NICAP se aproxima a las categorías 2--3 definidas en el Capítulo 2; (iii) descomposición SHAP individual de la predicción para identificar los factores específicos que la originaron.
+

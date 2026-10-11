@@ -1,0 +1,174 @@
+% =========================================================================
+% CAPÍTULO 6
+% =========================================================================
+\chapter{Resultados de los Modelos}
+
+Este capítulo presenta los resultados obtenidos al aplicar la metodología del Capítulo 3: primero los modelos de regresión para predecir el IMOR y otras variables objetivo, después el clasificador de insolvencia crítica, su interpretación mediante SHAP y, finalmente, la comparación entre modelos panel y univariados.
+
+\section{Modelos de Regresión}
+La Tabla \ref{tab:comparativa_regresion} resume el desempeño de los modelos de regresión para la predicción del IMOR futuro sobre el conjunto de prueba.
+\begin{table}[H]
+\centering
+\caption{Comparativa de Modelos de Regresión (conjunto de prueba, 20\% final cronológico)}
+\label{tab:comparativa_regresion}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Modelo} & $R^2$ & \textbf{MAE (\%)} & \textbf{RMSE (\%)} \\
+\midrule
+XGBoost & 0.6126 & 3.29 & 7.97 \\
+Random Forest & 0.5804 & 3.14 & 8.29 \\
+LightGBM & 0.5756 & 3.45 & 8.34 \\
+ARIMA(1,1,1)* & No comparable directamente\textsuperscript{a} & 1.87 & No reportado \\
+SARIMA(1,1,1)(1,1,1)$_{12}$* & No comparable directamente\textsuperscript{a} & 3.12 & No reportado \\
+\bottomrule
+\end{tabular}
+\\[0.2cm]
+\footnotesize\textsuperscript{a} ARIMA/SARIMA se evaluaron mediante pronóstico rodante únicamente sobre las 3 instituciones con mayor historia disponible ($\geq$20 observaciones), por lo que su MAE no es comparable en igualdad de condiciones muestrales con los modelos panel, evaluados sobre el 20\% final de todo el panel (46 instituciones). El $R^2$ no se reporta para ARIMA/SARIMA por tratarse de pronósticos rodantes de un paso, sin una partición única de prueba equivalente.
+\end{table}
+
+Hiperparámetros óptimos seleccionados por \texttt{GridSearchCV} sobre \texttt{TimeSeriesSplit}: XGBoost (\texttt{learning\_rate=0.05}, \texttt{max\_depth=3}, \texttt{n\_estimators=100}); LightGBM (\texttt{learning\_rate=0.05}, \texttt{max\_depth=3}, \texttt{n\_estimators=100}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{fig07_obs_vs_pred_xgb.png}
+\caption{Valores observados vs. predichos, modelo XGBoost, conjunto de prueba. Fuente: elaboración propia.}
+\label{fig:obs_pred}
+\end{figure}
+La nube de puntos de la Figura \ref{fig:obs_pred} se distribuye alrededor de la línea de identidad, con mayor dispersión en valores de IMOR elevados (superiores a 30\%), lo que indica que el modelo captura razonablemente bien la dinámica en el rango habitual de operación pero pierde precisión en los episodios más extremos de deterioro, un patrón consistente con el reducido número de observaciones disponibles en esa región de la distribución.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{fig08_residuos_xgb.png}
+\caption{Análisis de residuos del modelo XGBoost: dispersión residuo-predicción (izquierda) y distribución del error (derecha). Fuente: elaboración propia.}
+\label{fig:residuos}
+\end{figure}
+La distribución de residuos (Figura \ref{fig:residuos}) se concentra alrededor de cero con colas moderadas, sin un patrón sistemático evidente de heterocedasticidad severa, aunque se observa una ligera tendencia a subestimar los valores más altos de IMOR (residuos positivos concentrados en predicciones bajas), consistente con lo observado en la Figura \ref{fig:obs_pred}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{fig09_feature_importance_xgb.png}
+\caption{Importancia de variables (\textit{feature importance}) del modelo XGBoost de regresión. Fuente: elaboración propia.}
+\label{fig:feat_imp}
+\end{figure}
+La Figura \ref{fig:feat_imp} confirma cuantitativamente la intuición del Capítulo 5: la media móvil de 3 trimestres del IMOR (\texttt{IMOR\_ma3}, importancia relativa 0.352) es la variable individual más relevante, seguida del IMOR contemporáneo (0.272) y de la media móvil de 6 trimestres (0.173). Las variables macroeconómicas y de rentabilidad (NICAP, tasa implícita, gastos de administración, ROA) contribuyen conjuntamente con menos del 15\% de la importancia total, lo que sugiere que, para el horizonte de un trimestre, la inercia propia de la morosidad domina sobre el entorno macroeconómico contemporáneo —un resultado económicamente razonable dado que el deterioro crediticio es un proceso con alta persistencia temporal.
+
+Además del IMOR, se modelaron otras dos variables objetivo. Para las variables objetivo NICAP futuro y Resultado Neto futuro, comparando Random Forest contra Gradient Boosting sobre un conjunto de predictores rezagados y macroeconómicos, se obtuvo: mejor modelo para IMOR futuro = Gradient Boosting (MSE = 87.49); mejor modelo para NICAP futuro = Random Forest (MSE = $7.23\times10^{12}$, cifra dominada por los valores atípicos extremos documentados en el Capítulo 5); mejor modelo para Resultado Neto futuro = Gradient Boosting (MSE = $9.27\times10^{8}$, en unidades de miles de pesos al cuadrado, reflejando la alta dispersión de escala entre instituciones grandes y pequeñas).
+
+\section{Clasificación de Insolvencia Crítica}
+La variable objetivo binaria se define como $Default_{t+1} = \mathbb{I}(IMOR_{t+1}>10\%)$. El umbral de 10\% corresponde a un nivel de morosidad sustancialmente superior al promedio del sistema bancario comercial mexicano y se adopta como proxy de deterioro crítico consistente con la práctica de la literatura de riesgo de crédito en microfinanzas.
+
+En el conjunto de entrenamiento (951 observaciones), la clase minoritaria (\textit{Default}=1) representaba el \textbf{49.11\%} de las observaciones antes del remuestreo. Se trata, por tanto, de un desbalance \textbf{moderado, no severo}, resultado del elevado nivel medio de morosidad documentado en el Capítulo 5 (media de 14.56\%, muy por encima del umbral de 10\%). Tras aplicar SMOTE-ENN, el conjunto de entrenamiento se redujo a 289 observaciones con 44.98\% de clase minoritaria, reflejando que la fase ENN depuró un número considerable de observaciones ambiguas en la frontera de decisión.
+
+\begin{table}[H]
+\centering
+\caption{Desempeño del Clasificador Stacking Ensemble (conjunto de prueba, $n=238$)}
+\label{tab:stacking}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Exactitud (Accuracy) & 88.65\% \\
+Precisión (Precision) & 70.00\% \\
+Sensibilidad (Recall) & 82.35\% \\
+$F_1$-Score & 0.7568 \\
+ROC-AUC & 0.9148 \\
+MCC & 0.6873 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+La Tabla \ref{tab:stacking} resume el desempeño del clasificador, cuya arquitectura se muestra en la Figura \ref{fig:stacking_arq}.
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=1.1cm and 1.6cm,
+    box/.style={draw, rounded corners, fill=boxbg, minimum width=3cm, minimum height=0.8cm, align=center, font=\small},
+    arr/.style={-{Stealth}, thick}
+]
+\node[box] (rf) {Random Forest};
+\node[box, below=of rf] (xgb) {XGBoost};
+\node[box, below=of xgb] (lgb) {LightGBM};
+\node[box, right=2.6cm of xgb] (meta) {Meta-modelo\\(Regresión Logística)};
+\node[box, right=2.6cm of meta] (out) {Probabilidad\\de Default};
+\draw[arr] (rf.east) -- (meta.west |- rf.east);
+\draw[arr] (xgb) -- (meta);
+\draw[arr] (lgb.east) -- (meta.west |- lgb.east);
+\draw[arr] (meta) -- (out);
+\end{tikzpicture}
+\caption{Arquitectura del ensamble Stacking para clasificación de insolvencia. Fuente: elaboración propia.}
+\label{fig:stacking_arq}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{fig10_matriz_confusion.png}
+\caption{Matriz de confusión del clasificador Stacking sobre el conjunto de prueba. Fuente: elaboración propia.}
+\label{fig:cm}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{fig11_curva_roc.png}
+\caption{Curva ROC del clasificador Stacking (AUC = 0.9148). Fuente: elaboración propia.}
+\label{fig:roc}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{fig12_precision_recall.png}
+\caption{Curva Precision-Recall del clasificador Stacking. Fuente: elaboración propia.}
+\label{fig:pr}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{fig13_distribucion_probabilidades.png}
+\caption{Distribución de probabilidades predichas de Default, segmentada por clase real observada. Fuente: elaboración propia.}
+\label{fig:probdist}
+\end{figure}
+La Figura \ref{fig:probdist} muestra una separación razonable entre las distribuciones de probabilidad predicha para instituciones que efectivamente incurrieron en deterioro crítico frente a las que no, aunque con una zona de solapamiento en el rango 0.3--0.6 que explica el nivel de precisión (70\%) obtenido: el modelo genera falsos positivos principalmente entre instituciones con riesgo moderado-alto que finalmente no cruzaron el umbral de 10\% de IMOR.
+
+\section{Interpretabilidad mediante SHAP}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{fig14_shap_importancia.png}
+\caption{Importancia global de variables según valores SHAP (media del valor absoluto), clasificador XGBoost base del Stacking. Fuente: elaboración propia.}
+\label{fig:shap_bar}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{fig15_shap_beeswarm.png}
+\caption{Distribución de valores SHAP por observación (\textit{beeswarm plot}). Fuente: elaboración propia.}
+\label{fig:shap_bee}
+\end{figure}
+
+El ranking real de importancia SHAP obtenido —a diferencia de listados hipotéticos no verificados— es:
+\begin{enumerate}
+    \item Rezago del IMOR propio (\texttt{lag\_IMOR}), SHAP medio absoluto = 3.54
+    \item Rezago del NICAP (\texttt{lag\_NICAP}), 1.40
+    \item Rezago del Resultado Neto, 0.91
+    \item Inflación, 0.73
+    \item IGAE, 0.40
+    \item TIIE 28, 0.27
+    \item Tipo de cambio USD/MXN, 0.15
+    \item Cetes 28, 0.00 (sin contribución marginal detectable, previsiblemente por su alta colinealidad con TIIE 28)
+\end{enumerate}
+Este resultado difiere de lo reportado en versiones preliminares no verificadas de este documento, que ubicaban a la TIIE como segunda variable más relevante; el resultado reproducido de manera independiente sitúa en ese lugar al rezago del NICAP, seguido del Resultado Neto, con las variables macroeconómicas —encabezadas por la inflación— en una posición secundaria pero no despreciable.
+
+\section{Comparativa Temporal: Panel vs. Series Univariadas}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig16_comparativa_forecast.png}
+\caption{Comparación de pronósticos rodantes ARIMA, SARIMA y XGBoost (panel) contra el IMOR real para la institución con mayor historia disponible. Fuente: elaboración propia.}
+\label{fig:forecast_comp}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{fig17_comparativa_mae_modelos.png}
+\caption{Comparativa de MAE entre modelos univariados (evaluados solo en instituciones con historia extensa) y modelos panel (evaluados sobre todo el conjunto de prueba). Fuente: elaboración propia.}
+\label{fig:mae_comp}
+\end{figure}
+Como se aprecia en la Figura \ref{fig:mae_comp}, ARIMA exhibe el menor MAE promedio (1.87\%), pero \textbf{únicamente sobre las tres instituciones del panel con historia más extensa} (39 observaciones cada una); no puede generar pronósticos para las 43 instituciones restantes del panel de modelado que cuentan con historia más corta, ni incorpora directamente variables macroeconómicas. XGBoost, evaluado sobre el 20\% final cronológico de \textbf{todo} el panel de 46 instituciones, alcanza un MAE de 3.29\% en un conjunto de prueba considerablemente más amplio y heterogéneo. Ambos resultados son correctos dentro de su propio marco de evaluación; la comparación directa de sus valores de MAE debe interpretarse con esta salvedad metodológica explícita.
+

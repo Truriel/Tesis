@@ -1,0 +1,43 @@
+# Solo se versiona el texto de la tesis (.tex por capitulos y README).
+# Lo demas queda local para no subir datos, figuras, PDFs ni secretos.
+
+# Auxiliares de LaTeX (se regeneran al compilar)
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Compilados y respaldos locales
+*.pdf
+respaldos/
+*respaldo*.tex
+*backup*.tex
+tesis_claude.typ
+tesis.tex
+
+# Datos y salidas de ejecucion
+*.xlsx
+*.parquet
+*.json
+*.docx
+figuras/
+
+# Scripts: contienen el token de Banxico. Se versionan solo si se decide
+# quitar el token antes de subirlos.
+*.py
+__pycache__/
+
+# Notas y prompts locales
+*.txt
+*.md
+!README.md
+
+# Entorno y secretos
+.env
+*.env
+.claude/

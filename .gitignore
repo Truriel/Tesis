@@ -41,3 +41,6 @@ __pycache__/
 .env
 *.env
 .claude/
+
+# Archivo auxiliar de sincronizacion de editores
+*.synctex\(busy\)

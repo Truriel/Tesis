@@ -146,7 +146,6 @@ For binary critical-insolvency classification (future NPL ratio $>10\%$), a Stac
 % =========================================================================
 \chapter{Introducción y Marco de Contexto}
 
-\section{Introducción General}
 En economías contemporáneas, la arquitectura del sistema financiero trasciende la gran banca comercial. Existe un estrato fundamental de intermediarios no bancarios que atiende segmentos históricamente excluidos. En México, este rol lo cumplen las Sociedades Financieras Populares (SOFIPOs), reguladas por la Comisión Nacional Bancaria y de Valores (CNBV) bajo la Ley de Ahorro y Crédito Popular (LACP).
 
 Las SOFIPOs operan en un entorno de alta volatilidad estructural. Sus acreditados carecen frecuentemente de historiales crediticios formales, poseen ingresos fluctuantes vinculados a la economía informal, y son vulnerables a choques macroeconómicos exógenos. Cuando estos factores convergen adversamente, la cartera se deteriora rápidamente, elevando el Índice de Morosidad (IMOR). Este fenómeno de deterioro acelerado se ha documentado en episodios de crisis microfinanciera en México, como los casos de Ficrea en 2014, Caja Sierra Gorda y Operadora de Recursos Reforma, que evidenciaron la insuficiencia de sistemas de análisis estático para anticipar procesos de pérdida rápida de calidad crediticia.
@@ -155,8 +154,7 @@ Las SOFIPOs operan en un entorno de alta volatilidad estructural. Sus acreditado
 Las SOFIPOs fueron constituidas legalmente a partir de la Ley de Ahorro y Crédito Popular (2001) como sociedades anónimas de capital variable, distinguiéndose de las Sociedades Cooperativas de Ahorro y Préstamo (SOCAPs) de naturaleza mutualista. Esta estructura les confiere mayor dinamismo comercial para captar capital privado y expandir su presencia territorial o digital. La CNBV supervisa actualmente un universo heterogéneo que combina instituciones tradicionales de presencia física regional con una nueva generación de entidades de base tecnológica que han adquirido o transformado licencias de SOFIPO para captar recursos del público mediante plataformas digitales.
 Sistemas tradicionales de auditoría y revisión estática de razones financieras reaccionan con rezago ante dinámicas aceleradas de crisis microfinancieras. La historia financiera mexicana reciente ha registrado episodios críticos en el sector de intermediarios financieros populares que evidenciaron que el análisis contable trimestral, por sí solo, resulta insuficiente para anticipar procesos de deterioro acelerado. Estos episodios subrayan la necesidad de instrumentos de alerta más sensibles y oportunos que integren información histórica de la propia institución con variables de contexto macroeconómico.
 
-\subsection{Diagrama de Causa-Efecto del Problema}
-La Figura 1.1 sintetiza, mediante un diagrama de Ishikawa (causa-efecto), las categorías de factores que contribuyen a que el deterioro financiero de una SOFIPO no sea detectado oportunamente por los esquemas de supervisión tradicionales.
+La Figura \ref{fig:ishikawa} sintetiza, mediante un diagrama de Ishikawa (causa-efecto), las categorías de factores que contribuyen a que el deterioro financiero de una SOFIPO no sea detectado oportunamente por los esquemas de supervisión tradicionales.
 
 \begin{figure}[H]
 \centering
@@ -182,10 +180,10 @@ La inexistencia, en el sector SOFIPO, de herramientas automatizadas de alerta te
 \section{Justificación}
 \textit{Académica:} integra econometría de series temporales, aprendizaje automático y finanzas cuantitativas en un marco unificado y reproducible. \textit{Financiera:} provee herramientas objetivas de cuantificación de riesgo para instituciones con recursos limitados de análisis interno. \textit{Tecnológica:} demuestra la viabilidad de arquitecturas de datos modernas para el procesamiento eficiente de paneles heterogéneos en supervisión financiera. \textit{Social:} protege el ahorro popular al anticipar crisis institucionales. \textit{Regulatoria:} ofrece a la CNBV un prototipo de sistema de alerta temprana complementario a la supervisión tradicional.
 
-\section{Objetivo General}
-Diseñar, desarrollar y validar empíricamente un sistema cuantitativo de alerta temprana que integre modelos econométricos de series temporales y algoritmos de aprendizaje automático supervisado para predecir el deterioro financiero e insolvencia de las SOFIPOs mexicanas a partir de información regulatoria y macroeconómica pública.
+\section{Objetivos}
+\textbf{Objetivo general:} diseñar, desarrollar y validar empíricamente un sistema cuantitativo de alerta temprana que integre modelos econométricos de series temporales y algoritmos de aprendizaje automático supervisado para predecir el deterioro financiero e insolvencia de las SOFIPOs mexicanas a partir de información regulatoria y macroeconómica pública.
 
-\section{Objetivos Específicos}
+\textbf{Objetivos específicos:}
 \begin{enumerate}
     \item Construir un pipeline reproducible de limpieza, imputación e ingeniería de características que integre información regulatoria trimestral de la CNBV y variables macroeconómicas de referencia para el período 2015--2025.
     \item Desarrollar y comparar modelos tradicionales de series temporales contra algoritmos de aprendizaje automático para la predicción del riesgo crediticio futuro, incluyendo un análisis exploratorio riguroso que justifique la selección de variables y estructuras de modelado.
@@ -200,10 +198,9 @@ Diseñar, desarrollar y validar empíricamente un sistema cuantitativo de alerta
 
 \textbf{Hipótesis secundaria} (H1a): La incorporación explícita de variables macroeconómicas exógenas como la Tasa de Interés Interbancaria de Equilibrio, inflación, el Indicador Global de la Actividad Económica y tipo de cambio mejora la capacidad discriminante de los clasificadores de insolvencia crítica respecto a especificaciones basadas exclusivamente en variables contables internas.
 
-\section{Alcance}
-La investigación se circunscribe al universo de SOFIPOs mexicanas reportantes ante la CNBV entre el primer trimestre de 2015 y el tercer trimestre de 2025. Tras el proceso de limpieza descrito en el Capítulo 3, el panel bruto comprende 126 instituciones con estatus ``En operación'' (1690 observaciones institución-trimestre) y el panel final de modelado, tras exigir historia mínima e información completa de rezagos, comprende 46 instituciones (1189 observaciones). El horizonte predictivo modelado es de un trimestre hacia adelante ($t+1$).
-
-\section{Limitaciones}
+\section{Alcance y Limitaciones}
+\label{sec:limitaciones}
+La investigación se circunscribe al universo de SOFIPOs mexicanas reportantes ante la CNBV entre el primer trimestre de 2015 y el tercer trimestre de 2025. Tras el proceso de limpieza descrito en el Capítulo 3, el panel bruto comprende 126 instituciones con estatus ``En operación'' (1690 observaciones institución-trimestre) y el panel final de modelado, tras exigir historia mínima e información completa de rezagos, comprende 46 instituciones (1189 observaciones). El horizonte predictivo modelado es de un trimestre hacia adelante ($t+1$). Dentro de este alcance, la investigación presenta las siguientes limitaciones:
 \begin{itemize}
     \item \textbf{Nota crítica sobre variables macroeconómicas:} Las variables macroeconómicas utilizadas en el panel de esta implementación son series generadas de forma determinista como sustituto de la API oficial de Banco de México, dado que el token de acceso no resultó disponible en el entorno de ejecución. Esta limitación implica que los valores exactos de TIIE, inflación e IGAE reportados en esta tesis no corresponden a observaciones oficiales verificadas del regulador. Para cualquier aplicación regulatoria futura, es \textbf{imperativo} sustituir estas series por datos oficiales de Banxico mediante su API pública o distribuciones autorizadas. El pipeline metodológico es robusto a esta sustitución y los resultados de validación temporal permanecerían válidos tras la incorporación de series oficiales.
     \item La columna oficial ``Nivel de Capitalización'' del boletín de la CNBV presenta valores atípicos extremos (hasta $4.97\times10^{7}\%$) en un número reducido de observaciones, lo que sugiere errores de captura o casos de instituciones con activos ponderados por riesgo cercanos a cero; esta anomalía se documenta explícitamente en el Capítulo 5 y se trata mediante estadística robusta.
@@ -216,24 +213,20 @@ La investigación se circunscribe al universo de SOFIPOs mexicanas reportantes a
 % =========================================================================
 \chapter{Marco Teórico Integral}
 
-\section{Microfinanzas: Teoría Económica y Contexto Mexicano}
+Este capítulo reúne los fundamentos teóricos que sustentan la investigación. Se parte del contexto económico de las microfinanzas y de las SOFIPOs, se presentan los conceptos de riesgo crediticio y los indicadores regulatorios utilizados como variables del estudio, y se describen las herramientas econométricas y de aprendizaje automático empleadas para modelarlos, incluyendo el tratamiento del desbalance de clases y la interpretación de los modelos.
 
-\subsection{Fundamentos Conceptuales del CGAP}
+\section{Microfinanzas: Teoría Económica y Contexto Mexicano}
 El Consultative Group to Assist the Poorest (CGAP) transformó la conceptualización de microfinanzas al articular que estas no se limitan a microcrédito sino que constituyen un ecosistema integral de servicios financieros: ahorro, crédito, seguros y transferencias. Esta visión reconoce que los hogares pobres experimentan ingresos altamente variables y requieren productos de protección contra shocks económicos idiosincráticos y covariantes.
 
 Un segundo aporte crítico de CGAP fue enfatizar la sostenibilidad financiera como prerrequisito, no meramente técnico sino moral: una institución que depende permanentemente de subsidios externos colapsará cuando estos se agoten. Un tercer aporte fue la postura pragmática de que el microcrédito no es siempre la solución adecuada para toda la población en condición de pobreza.
 
-\subsection{Información Asimétrica: Selección Adversa y Riesgo Moral}
 Armendáriz y Morduch proporcionaron el andamiaje económico riguroso que explica por qué existen instituciones especializadas en microfinanzas. En mercados de crédito informal existe \textbf{selección adversa}: el prestatario conoce mejor que el prestamista su verdadera probabilidad de pago. Si el prestamista incrementa la tasa de interés para compensar el riesgo promedio, paradójicamente empeora la calidad del pool de solicitantes, porque los proyectos de menor riesgo se retiran del mercado, quedando únicamente quienes toleran tasas elevadas por asumir proyectos más riesgosos.
 
 El segundo problema es el \textbf{riesgo moral}: una vez otorgado el crédito, el incentivo del deudor a maximizar el esfuerzo puede debilitarse si el prestamista asume la mayor parte del riesgo a la baja. Las instituciones de microfinanzas mitigan ambos problemas mediante garantías solidarias de grupo, monitoreo social y ciclos de crédito de corta duración con renovación condicionada al buen historial de pago.
 
-\subsection{SOFIPOs Mexicanas: Institucionalización de las Microfinanzas}
 La categoría regulatoria SOFIPO, creada en 2009, formalizó un sector que había evolucionado desde organizaciones no gubernamentales de los años noventa hacia sociedades anónimas comerciales durante la década de 2000 (siendo el caso paradigmático la conversión de Compartamos a banco comercial en 2005). En la actualidad operan decenas de SOFIPOs con estructuras heterogéneas: desde cajas de ahorro regionales de origen cooperativo hasta fintechs que utilizan la licencia SOFIPO para captación digital masiva.
 
 \section{Riesgo Crediticio: Teoría Financiera y Regulación}
-
-\subsection{Pérdida Esperada y Componentes del Riesgo de Crédito}
 El riesgo crediticio se formaliza, siguiendo el marco de Basilea, como la pérdida económica esperada resultante del incumplimiento de un deudor:
 \begin{equation}
 PE = PD \times EAD \times LGD
@@ -241,7 +234,6 @@ PE = PD \times EAD \times LGD
 \end{equation}
 donde $PD \in [0,1]$ es la Probabilidad de Incumplimiento (\textit{Probability of Default}), $EAD \geq 0$ es la Exposición al momento del Incumplimiento (\textit{Exposure at Default}), medida en unidades monetarias, y $LGD \in [0,1]$ es la Severidad de la Pérdida (\textit{Loss Given Default}), es decir, la proporción de la exposición que no se recupera tras el incumplimiento. La Pérdida Esperada se provisiona contablemente; la variabilidad no esperada alrededor de este valor (Pérdida No Esperada) debe cubrirse con capital regulatorio.
 
-\subsection{Índice de Morosidad (IMOR)}
 El indicador central de esta investigación es el Índice de Morosidad, definido como:
 \begin{equation}
 IMOR_t = \frac{\text{Cartera Vencida}_t}{\text{Cartera Vigente}_t + \text{Cartera Vencida}_t} \times 100
@@ -249,29 +241,23 @@ IMOR_t = \frac{\text{Cartera Vencida}_t}{\text{Cartera Vigente}_t + \text{Carter
 \end{equation}
 El IMOR mide la proporción de la cartera crediticia total que se encuentra en incumplimiento contractual en el periodo $t$. Es la variable objetivo (\textit{target}) tanto del problema de regresión continua como, tras su binarización, del problema de clasificación de insolvencia desarrollados en los Capítulos 5 y 6.
 
-\subsection{Nivel de Capitalización (NICAP)}
+Un segundo indicador regulatorio relevante es el Nivel de Capitalización:
 \begin{equation}
 NICAP_t = \frac{\text{Capital Neto}_t}{\text{Requerimientos Totales de Capital por Riesgo}_t} \times 100
 \label{eq:nicap}
 \end{equation}
 El NICAP mide la suficiencia patrimonial de la institución frente a los riesgos asumidos. La regulación mexicana establece categorías de intervención prudencial: NICAP $\geq 100\%$ (operación regular), $80\%$--$100\%$ (alerta preventiva, restricción de dividendos), $56\%$--$80\%$ (plan forzoso de capitalización) y NICAP $<56\%$ (causal legal de revocación de licencia).
 
-\subsection{Marco de Basilea III y su Adaptación a SOFIPOs}
 Basilea III, publicado tras la crisis financiera de 2008, elevó el capital ordinario mínimo (Tier 1 core) de 4\% a 6\% de activos ponderados por riesgo e introdujo colchones de capital contracíclicos (0--2.5\%) y métricas de liquidez (LCR, NSFR). En México, la CNBV adapta estos principios a las SOFIPOs mediante requerimientos de capitalización propios (típicamente 10--12\% de NICAP mínimo), sin exigir la implementación íntegra del marco de Basilea III, pero sí sistemas adecuados de gestión de riesgo crediticio, de mercado y operacional.
 
 \section{Econometría de Datos Panel y Series Temporales}
-
-\subsection{Fundamentos del Análisis de Regresión y Especificación}
 Un modelo econométrico relaciona una variable dependiente $y$ con variables explicativas $\mathbf{x}$ bajo el marco general $y_i = \beta_0 + \sum_j \beta_j x_{ij} + \epsilon_i$, donde el término de error $\epsilon_i$ captura la variación no explicada por el modelo. La identificación causal requiere que el error sea ortogonal a los regresores, es decir, $\mathbb{E}[\epsilon_i | \mathbf{x}_i] = 0$. Cuando esta condición falla por variables omitidas correlacionadas con los regresores, el estimador de Mínimos Cuadrados Ordinarios es sesgado e inconsistente. La especificación apropiada del modelo, la validación de supuestos de no autocorrelación y homocedasticidad, y el contraste de hipótesis mediante pruebas de significancia estadística, son pilares del análisis econométrico riguroso.
 
-\subsection{Series Temporales: Estacionariedad y Procesos ARMA}
 Una serie temporal $\{Y_t\}_{t=1}^T$ es débilmente estacionaria si su media $\mu = \mathbb{E}[Y_t]$ y su varianza $\sigma^2 = \text{Var}(Y_t)$ son constantes en el tiempo y su autocovarianza $\gamma(s) = \text{Cov}(Y_t, Y_{t+s})$ depende solo del rezago $s$, no de $t$. Las series no estacionarias, que exhiben tendencias deterministas o estocásticas, requieren diferenciación. Un proceso Autorregresivo Integrado de Media Móvil $ARIMA(p,d,q)$ integra diferenciación de orden $d$ para lograr estacionariedad, autorregresión de orden $p$, y media móvil de orden $q$ en la serie diferenciada. La Función de Autocorrelación (ACF) y Función de Autocorrelación Parcial (PACF) son herramientas diagnósticas esenciales para identificar los órdenes $(p,q)$ apropiados.
 
-\subsection{Estructura de Datos Panel}
 Un panel de datos combina la dimensión transversal (instituciones $i=1,\dots,N$) con la dimensión temporal (trimestres $t=1,\dots,T$), permitiendo controlar heterogeneidad no observada entre instituciones y explotar variación tanto \textit{between} (diferencias entre instituciones) como \textit{within} (cambios a lo largo del tiempo dentro de cada institución). En esta investigación, $N=46$ instituciones y $T$ varía entre 6 y 40 trimestres según la institución, configurando un panel no balanceado. Los modelos panel con efectos fijos controlan heterogeneidad constante en el tiempo por institución; los modelos de efectos aleatorios asumen que la heterogeneidad es una variable aleatoria ortogonal a los regresores, permitiendo estimación más eficiente pero requiriendo mayor supuestos.
 
-\subsection{Modelos ARIMA y SARIMA}
-Un proceso $ARIMA(p,d,q)$ se expresa mediante el operador de retardos $L$ como:
+Formalmente, un proceso $ARIMA(p,d,q)$ se expresa mediante el operador de retardos $L$ como:
 \begin{equation}
 \phi_p(L)(1-L)^d Y_t = c + \theta_q(L)\epsilon_t
 \label{eq:arima}
@@ -279,12 +265,12 @@ Un proceso $ARIMA(p,d,q)$ se expresa mediante el operador de retardos $L$ como:
 Su extensión estacional $SARIMA(p,d,q)(P,D,Q)_s$ incorpora componentes autorregresivos y de media móvil en la frecuencia estacional $s$. Ambos modelos son univariados: se ajustan de manera independiente para cada institución y no incorporan información transversal ni variables macroeconómicas exógenas, lo que constituye su principal limitación frente a los enfoques panel desarrollados en esta tesis.
 
 \section{Aprendizaje Automático Supervisado}
-
-\subsection{Fundamentos del Aprendizaje Automático Supervisado}
 El aprendizaje automático supervisado busca aprender una función $\hat{f}: \mathbb{R}^p \to \mathbb{R}$ a partir de ejemplos etiquetados $\{(\mathbf{x}_i, y_i)\}_{i=1}^n$, de modo que la función generalice bien a datos nuevos no vistos durante el entrenamiento. Se distingue entre problemas de \textit{regresión}, donde $y_i$ es continua, y problemas de \textit{clasificación}, donde $y_i$ es discreta. La capacidad de generalización depende del balance entre sesgo (error sistemático por especificación inadecuada del modelo) y varianza (sensibilidad a fluctuaciones aleatorias en los datos de entrenamiento). La validación cruzada y la partición temporal en problemas de series temporales son mecanismos para estimar la capacidad de generalización sin contaminar el conjunto de prueba.
 
 \subsection{Árboles de Decisión y Métodos de Ensamble}
 Un árbol de decisión es un modelo interpretable que recursivamente particiona el espacio de variables en regiones rectangulares, asignando a cada región una predicción constante. Los árboles individuales tienden a sobreajustarse si se permite que crezcan sin restricción. Los métodos de ensamble combinan múltiples árboles débiles para crear un predictor fuerte. El Gradient Boosting entrena árboles secuencialmente, donde cada árbol se ajusta a los residuos del árbol anterior, minimizando una función de pérdida regularizada. Random Forest entrena árboles en paralelo sobre muestras bootstrap del conjunto de datos, reduciendo varianza mediante promediado. Estos métodos capturan automáticamente interacciones no lineales entre variables sin requerir especificación explícita, lo que los hace valiosos para problemas con relaciones complejas.
+
+LightGBM (Ke et al., 2017) acelera el entrenamiento mediante crecimiento de árboles por hoja (\textit{leaf-wise}) y muestreo \textit{Gradient-based One-Side Sampling}. Random Forest (Breiman, 2001) construye un ensamble de árboles independientes sobre muestras \textit{bootstrap} con selección aleatoria de variables en cada partición, reduciendo varianza a costa de un sesgo ligeramente mayor que el boosting secuencial. Ambos se utilizan en esta tesis como comparativos directos de XGBoost, descrito a continuación.
 
 \subsection{Extreme Gradient Boosting (XGBoost)}
 XGBoost (Chen y Guestrin, 2016) construye un ensamble aditivo de $M$ árboles de regresión:
@@ -295,10 +281,7 @@ En cada iteración se minimiza una función de pérdida regularizada mediante ex
 \begin{equation}
 \mathcal{L}^{(t)} \approx \sum_{i=1}^n \left[g_i f_t(\mathbf{x}_i) + \tfrac{1}{2} h_i f_t^2(\mathbf{x}_i)\right] + \gamma T + \tfrac{1}{2}\lambda \sum_{j=1}^T w_j^2
 \end{equation}
-donde $g_i, h_i$ son el gradiente y hessiano de la pérdida respecto a la predicción anterior, y $\gamma, \lambda$ penalizan la complejidad estructural del árbol. XGBoost es la técnica seleccionada como modelo principal de regresión en esta tesis por su capacidad de capturar interacciones no lineales entre variables contables y macroeconómicas sin imponer supuestos paramétricos restrictivos, a costa de menor interpretabilidad directa (mitigada mediante SHAP, Sección 2.7).
-
-\subsection{LightGBM y Random Forest}
-LightGBM (Ke et al., 2017) acelera el entrenamiento mediante crecimiento de árboles por hoja (\textit{leaf-wise}) y muestreo \textit{Gradient-based One-Side Sampling}. Random Forest (Breiman, 2001) construye un ensamble de árboles independientes sobre muestras \textit{bootstrap} con selección aleatoria de variables en cada partición, reduciendo varianza a costa de un sesgo ligeramente mayor que el boosting secuencial. Ambos se utilizan en esta tesis como comparativos directos de XGBoost.
+donde $g_i, h_i$ son el gradiente y hessiano de la pérdida respecto a la predicción anterior, y $\gamma, \lambda$ penalizan la complejidad estructural del árbol. XGBoost es la técnica seleccionada como modelo principal de regresión en esta tesis por su capacidad de capturar interacciones no lineales entre variables contables y macroeconómicas sin imponer supuestos paramétricos restrictivos, a costa de menor interpretabilidad directa (mitigada mediante SHAP, Sección \ref{sec:shap}).
 
 \subsection{Redes Neuronales Recurrentes y Arquitecturas LSTM}
 Las redes neuronales recurrentes (RNN) procesan secuencias de entrada mediante un estado oculto $h_t$ actualizado recursivamente: $h_t = \sigma(W_{hx} x_t + W_{hh} h_{t-1} + b_h)$. Esta arquitectura captura dependencias temporales pero sufre el desvanecimiento del gradiente en secuencias largas: durante el entrenamiento, los gradientes se multiplican repetidamente por matrices de peso, decayendo exponencialmente a cero. Una celda LSTM (Hochreiter y Schmidhuber, 1997) resuelve esto mediante un mecanismo de memoria con compuertas que regulan el flujo de información:
@@ -309,52 +292,46 @@ o_t &= \sigma(W_o[h_{t-1},x_t]+b_o) &&\text{(compuerta de salida)}
 \end{align}
 El estado de celda evoluciona como $C_t = f_t \odot C_{t-1} + i_t \odot \tanh(W_C[h_{t-1},x_t]+b_C)$, donde $\odot$ es producto elemento a elemento. La compuerta de olvido decide qué información antigua descartar; la de entrada, qué información nueva incorporar; la de salida, qué información pasar al siguiente paso. Esta arquitectura es altamente efectiva en problemas de secuencia de horizonte largo. En esta tesis, aunque LSTM se discute como herramienta prospectiva para capturar dependencias temporales complejas en horizontes múltiples, no fue posible entrenar una arquitectura LSTM formal con el volumen de datos panel disponible (1189 observaciones sobre 46 instituciones) sin incurrir en sobreajuste severo; su implementación se reserva para trabajo futuro con mayor profundidad temporal por institución (véase Capítulo 10).
 
-\section{El Problema del Desbalance de Clases en Aprendizaje Automático}
-En problemas de clasificación binaria, cuando la distribución de clases es altamente desigual (una clase representa el 1-5\% de los datos, mientras la otra domina), los algoritmos de aprendizaje automático tienden a favorecer la clase mayoritaria, produciendo clasificadores con alto \textit{accuracy} pero incapaces de detectar la clase minoritaria de interés. Este desbalance es particularmente problemático en aplicaciones de riesgo crediticio, donde los eventos de incumplimiento son por naturaleza raros pero de alto costo. Las estrategias para mitigarlo se dividen en tres enfoques: métodos de remuestreo (sobremuestreo de la clase minoritaria, submuestreo de la mayoritaria, o ambos), métodos de ponderación (asignar pesos mayores a la clase minoritaria durante el entrenamiento), y métodos de ensamble (combinar modelos entrenados en muestras balanceadas). Esta investigación adopta una estrategia híbrida de remuestreo combinado con validación en el conjunto de prueba sin modificación, como se detalla en el Capítulo 3.
-
-\section{Tratamiento del Desbalance de Clases: SMOTE-ENN}
-El sobremuestreo sintético SMOTE (Chawla et al., 2002) genera observaciones artificiales de la clase minoritaria mediante interpolación lineal entre vecinos cercanos:
-\begin{equation}
-\mathbf{x}_{\text{sintético}} = \mathbf{x}_i + \delta(\mathbf{x}_{zi}-\mathbf{x}_i), \quad \delta \sim \mathcal{U}(0,1)
-\end{equation}
-La depuración ENN (Wilson, 1972) elimina posteriormente observaciones cuya etiqueta difiere de la mayoría de sus vecinos más cercanos, produciendo fronteras de decisión más limpias. Como se documenta en el Capítulo 6, en el conjunto de entrenamiento de esta investigación la clase minoritaria (\textit{Default}) representaba ya un 49.1\% de las observaciones antes del remuestreo —un desbalance moderado, no severo—, por lo que el efecto de SMOTE-ENN fue principalmente de depuración de frontera más que de generación masiva de sintéticos.
-
-\section{Generalización Apilada (Stacking)}
+\subsection{Generalización Apilada (Stacking)}
 El Stacking (Wolpert, 1992) combina las predicciones de $M$ modelos base de nivel 0 mediante un meta-modelo de nivel 1:
 \begin{equation}
 P(\text{Default}=1\mid\mathbf{x}) = \sigma\left(\beta_0 + \sum_{m=1}^M \beta_m f_m(\mathbf{x})\right)
 \end{equation}
 En esta tesis, los modelos base son Random Forest, XGBoost y LightGBM, y el meta-modelo es una regresión logística entrenada sobre predicciones \textit{out-of-fold} obtenidas mediante validación cruzada de 5 particiones, evitando fuga de información del conjunto de entrenamiento hacia el meta-modelo.
 
-\section{Explicabilidad: Valores de Shapley (SHAP)}
+\subsection{Explicabilidad: Valores de Shapley (SHAP)}
+\label{sec:shap}
 SHAP (Lundberg y Lee, 2017) adapta la solución de Shapley (1953) para juegos cooperativos al aprendizaje automático, descomponiendo la predicción de una instancia como:
 \begin{equation}
 f(\mathbf{x}) = \phi_0 + \sum_{j=1}^M \phi_j(\mathbf{x})
 \end{equation}
 donde $\phi_0=\mathbb{E}[f(\mathbf{x})]$ y $\phi_j$ es la contribución marginal promedio de la variable $j$ sobre todas las posibles coaliciones. Es importante subrayar, como se retoma en el Capítulo 7, que SHAP cuantifica \textbf{asociación estadística dentro del modelo entrenado}, no relaciones causales en el sistema económico subyacente.
 
+\section{Desbalance de Clases y Remuestreo SMOTE-ENN}
+En problemas de clasificación binaria, cuando la distribución de clases es altamente desigual (una clase representa el 1-5\% de los datos, mientras la otra domina), los algoritmos de aprendizaje automático tienden a favorecer la clase mayoritaria, produciendo clasificadores con alto \textit{accuracy} pero incapaces de detectar la clase minoritaria de interés. Este desbalance es particularmente problemático en aplicaciones de riesgo crediticio, donde los eventos de incumplimiento son por naturaleza raros pero de alto costo. Las estrategias para mitigarlo se dividen en tres enfoques: métodos de remuestreo (sobremuestreo de la clase minoritaria, submuestreo de la mayoritaria, o ambos), métodos de ponderación (asignar pesos mayores a la clase minoritaria durante el entrenamiento), y métodos de ensamble (combinar modelos entrenados en muestras balanceadas). Esta investigación adopta una estrategia híbrida de remuestreo combinado con validación en el conjunto de prueba sin modificación, como se detalla en el Capítulo 3.
+
+Dentro de los métodos de remuestreo, el sobremuestreo sintético SMOTE (Chawla et al., 2002) genera observaciones artificiales de la clase minoritaria mediante interpolación lineal entre vecinos cercanos:
+\begin{equation}
+\mathbf{x}_{\text{sintético}} = \mathbf{x}_i + \delta(\mathbf{x}_{zi}-\mathbf{x}_i), \quad \delta \sim \mathcal{U}(0,1)
+\end{equation}
+La depuración ENN (Wilson, 1972) elimina posteriormente observaciones cuya etiqueta difiere de la mayoría de sus vecinos más cercanos, produciendo fronteras de decisión más limpias. Como se documenta en el Capítulo 6, en el conjunto de entrenamiento de esta investigación la clase minoritaria (\textit{Default}) representaba ya un 49.1\% de las observaciones antes del remuestreo —un desbalance moderado, no severo—, por lo que el efecto de SMOTE-ENN fue principalmente de depuración de frontera más que de generación masiva de sintéticos.
+
 % =========================================================================
 % CAPÍTULO 3
 % =========================================================================
 \chapter{Marco Metodológico}
 
-\section{Paradigma y Enfoque}
-La investigación se inscribe en el paradigma positivista con enfoque cuantitativo, apoyado en el empirismo estadístico y la reproducibilidad computacional.
+Este capítulo describe el diseño de la investigación, el conjunto de datos utilizado, la operacionalización de las variables, el proceso de preparación de datos, los modelos entrenados con su esquema de validación temporal y las métricas con las que se evalúa su desempeño.
 
-\section{Diseño de Investigación}
-El diseño es no experimental (las variables no se manipulan deliberadamente), longitudinal de datos panel (dimensión transversal de instituciones y temporal de trimestres) y de alcance explicativo-predictivo.
+\section{Paradigma, Enfoque y Diseño de Investigación}
+La investigación se inscribe en el paradigma positivista con enfoque cuantitativo, apoyado en el empirismo estadístico y la reproducibilidad computacional. El diseño es no experimental (las variables no se manipulan deliberadamente), longitudinal de datos panel (dimensión transversal de instituciones y temporal de trimestres) y de alcance explicativo-predictivo.
 
-\section{Población y Muestra}
-La población objetivo corresponde a la totalidad de SOFIPOs reportantes ante la CNBV entre 2015 y 2025 (151 nombres distintos identificados en el boletín estadístico oficial). Tras el filtro de estatus ``En operación'' y la depuración de valores nulos en variables clave (IMOR, Activo Total, Cartera Vigente), el panel bruto de trabajo comprende \textbf{126 instituciones} y \textbf{1690 observaciones institución-trimestre}. Tras exigir un mínimo de 6 observaciones consecutivas por institución (necesario para construir de manera consistente los rezagos de orden 3 y las medias móviles de 6 periodos) y eliminar registros sin variable objetivo futura, el panel final de modelado comprende \textbf{46 instituciones} y \textbf{1189 observaciones}.
-
-\section{Fuentes de Datos}
+\section{Conjunto de Datos}
+La población objetivo corresponde a la totalidad de SOFIPOs reportantes ante la CNBV entre 2015 y 2025 (151 nombres distintos identificados en el boletín estadístico oficial). Tras el filtro de estatus ``En operación'' y la depuración de valores nulos en variables clave (IMOR, Activo Total, Cartera Vigente), el panel bruto de trabajo comprende \textbf{126 instituciones} y \textbf{1690 observaciones institución-trimestre}. Tras exigir un mínimo de 6 observaciones consecutivas por institución (necesario para construir de manera consistente los rezagos de orden 3 y las medias móviles de 6 periodos) y eliminar registros sin variable objetivo futura, el panel final de modelado comprende \textbf{46 instituciones} y \textbf{1189 observaciones}. El periodo cubierto por los datos disponibles abarca del primer trimestre de 2015 al tercer trimestre de 2025, y la información proviene de las siguientes fuentes:
 \begin{itemize}
     \item \textbf{CNBV:} Boletín estadístico de Sociedades Financieras Populares (variable dependiente IMOR, NICAP, activos, cartera, resultado neto y demás partidas contables).
-    \item \textbf{Variables macroeconómicas:} TIIE 28, inflación (INPC), tipo de cambio USD/MXN, Cetes 28 e IGAE. En la ejecución reproducida para esta tesis dichas series se generaron de forma sintética determinista ante la indisponibilidad del token de acceso a la API de Banco de México incluido en el script original (véase limitación explícita en la Sección 1.11 y nota metodológica en el Capítulo 5).
+    \item \textbf{Variables macroeconómicas:} TIIE 28, inflación (INPC), tipo de cambio USD/MXN, Cetes 28 e IGAE. En la ejecución reproducida para esta tesis dichas series se generaron de forma sintética determinista ante la indisponibilidad del token de acceso a la API de Banco de México incluido en el script original (véase limitación explícita en la Sección \ref{sec:limitaciones} y nota metodológica en el Capítulo 5).
 \end{itemize}
-
-\section{Periodo de Estudio}
-El periodo cubierto por los datos disponibles abarca del primer trimestre de 2015 al tercer trimestre de 2025.
 
 \section{Variables y Operacionalización}
 
@@ -385,10 +362,9 @@ USD/MXN$_t$ & Continua & Tipo de cambio FIX & Banxico (sintética) & Predictor m
 \end{table}
 
 \section{Preparación de Datos: ETL}
-El proceso de extracción, transformación y carga (ETL) se implementó en dos capas. La \textit{capa de limpieza} utiliza consultas SQL vectorizadas directamente sobre el archivo de datos, normalizando valores faltantes codificados como \texttt{'n.a.'}, \texttt{'n.d.'} o \texttt{'-'} mediante operaciones de validación de tipo e imputación de valores nulos mediante la media histórica de la propia institución. La \textit{capa de ingeniería de características} calcula, de forma vectorizada y particionada por institución, los rezagos temporales, medias móviles y ratios financieros descritos en la Tabla \ref{tab:variables}. El énfasis en procesamiento vectorizado garantiza eficiencia computacional y reproducibilidad del pipeline en diferentes escalas de datos.
+El proceso de extracción, transformación y carga (ETL) se implementó en dos capas. La \textit{capa de limpieza} utiliza consultas SQL vectorizadas directamente sobre el archivo de datos, normalizando valores faltantes codificados como \texttt{'n.a.'}, \texttt{'n.d.'} o \texttt{'-'} mediante operaciones de validación de tipo e imputación de valores nulos mediante la media histórica de la propia institución. La \textit{capa de ingeniería de características} calcula, de forma vectorizada y particionada por institución, los rezagos temporales, medias móviles y ratios financieros descritos en la Tabla \ref{tab:variables}. El énfasis en procesamiento vectorizado garantiza eficiencia computacional y reproducibilidad del pipeline en diferentes escalas de datos. El Listado \ref{lst:limpieza} muestra el fragmento correspondiente a la limpieza e imputación.
 
-\subsection{Fragmento de Código: Limpieza Vectorizada}
-\begin{lstlisting}[language=Python, caption={Limpieza e imputación con DuckDB (fragmento real del pipeline ejecutado)}]
+\begin{lstlisting}[language=Python, caption={Limpieza e imputación con DuckDB (fragmento real del pipeline ejecutado)}, label={lst:limpieza}]
 query_imputed = f"""
     SELECT Nombre, Periodo, Estatus,
     COALESCE("IMOR 1/ (%)_raw",
@@ -399,15 +375,12 @@ query_imputed = f"""
 df_cleaned = con.execute(query_imputed).pl()
 \end{lstlisting}
 
-\section{División Temporal de Datos}
-Es metodológicamente inadmisible en series temporales realizar una partición aleatoria train/test, pues ello introduciría información futura (\textit{lookahead bias}) en el entrenamiento, haciendo que el modelo optimice sobre información que no estaría disponible en el momento de predicción. Por ello, la partición train/test se realiza de forma \textit{cronológica}, reservando el 80\% inicial de las observaciones (ordenadas por período) para entrenamiento y el 20\% final para prueba. La selección de hiperparámetros se valida mediante validación cruzada temporal con cinco particiones, donde cada pliegue respeta el orden cronológico: se entrena sobre datos pasados y se valida sobre un bloque futuro inmediato, garantizando que ninguna información futura contamina el conjunto de entrenamiento.
-
-\section{Modelos Entrenados}
+\section{Modelos Entrenados y Validación Temporal}
 Se entrenaron y compararon dos familias de modelos: \textit{modelos univariados clásicos} (ARIMA y SARIMA, ajustados independientemente para cada institución mediante pronóstico rodante) que sirven como referencia de la econometría tradicional, y \textit{modelos panel multivariados} (XGBoost, LightGBM y Random Forest) que aprovechan la información conjunta del panel para generalizar a instituciones de historia corta. Para la tarea de clasificación de insolvencia crítica, se entrenó un ensamble Stacking (combinación de Random Forest, XGBoost y LightGBM con un meta-regresor logístico) precedido de remuestreo SMOTE-ENN aplicado \textbf{únicamente sobre el conjunto de entrenamiento}, para evitar contaminar el conjunto de prueba con observaciones sintéticas. La búsqueda de hiperparámetros se realizó mediante búsqueda en grilla sobre validación cruzada temporal, garantizando que cada pliegue respeta el orden cronológico.
 
-\section{Métricas de Evaluación}
+Es metodológicamente inadmisible en series temporales realizar una partición aleatoria train/test, pues ello introduciría información futura (\textit{lookahead bias}) en el entrenamiento, haciendo que el modelo optimice sobre información que no estaría disponible en el momento de predicción. Por ello, la partición train/test se realiza de forma \textit{cronológica}, reservando el 80\% inicial de las observaciones (ordenadas por período) para entrenamiento y el 20\% final para prueba. La selección de hiperparámetros se valida mediante validación cruzada temporal con cinco particiones, donde cada pliegue respeta el orden cronológico: se entrena sobre datos pasados y se valida sobre un bloque futuro inmediato, garantizando que ninguna información futura contamina el conjunto de entrenamiento.
 
-\subsection{Regresión}
+\section{Métricas de Evaluación}
 Para la tarea de predicción continua del IMOR futuro, se utilizan tres métricas complementarias:
 \begin{align}
 MAE &= \frac{1}{n}\sum_{i=1}^n |y_i-\hat{y}_i| \quad \text{(Error Absoluto Medio)}\\
@@ -416,7 +389,6 @@ R^2 &= 1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2} \quad \text{(Co
 \end{align}
 El MAE tiene interpretación en unidades originales (porcentaje de morosidad); el RMSE penaliza errores grandes; el $R^2$ cuantifica la proporción de varianza explicada por el modelo. Un $R^2$ cercano a uno indica un modelo que captura la mayor parte de la variabilidad; un $R^2$ cercano a cero indica un modelo apenas mejor que la media.
 
-\subsection{Clasificación}
 Para la clasificación binaria de insolvencia crítica, se reportan cinco métricas que capturan diferentes aspectos del desempeño:
 \begin{align}
 \text{Accuracy} &= \frac{TP+TN}{TP+TN+FP+FN} \quad \text{(proporción correcta total)}\\
@@ -432,7 +404,6 @@ El MCC es particularmente informativo en presencia de desbalance de clases porqu
 % =========================================================================
 \chapter{Arquitectura Computacional del Sistema}
 
-\section{Arquitectura General del Pipeline}
 La Figura \ref{fig:arquitectura} sintetiza el flujo completo de datos, desde las fuentes regulatorias hasta la generación de alertas de riesgo.
 
 \begin{figure}[H]
@@ -467,11 +438,9 @@ La Figura \ref{fig:arquitectura} sintetiza el flujo completo de datos, desde las
 \label{fig:arquitectura}
 \end{figure}
 
-\section{Arquitectura de Alto Rendimiento: DuckDB y Polars}
 El procesamiento tradicional basado en estructuras densas sin tipado estricto genera problemas de memoria y lentitud en agregaciones de panel. La arquitectura implementada emplea DuckDB como motor analítico embebido que ejecuta SQL vectorizado directamente sobre archivos Parquet sin necesidad de cargar la totalidad de los datos en memoria, y Polars —basado en Apache Arrow y escrito en Rust— para las transformaciones de ingeniería de características, aprovechando paralelismo multihilo sin las limitaciones del \textit{Global Interpreter Lock} de Python.
 
-\section{Reproducibilidad}
-Todos los modelos estocásticos fijan semilla aleatoria (\texttt{random\_state=42}). El código completo, las versiones de librerías utilizadas y las instrucciones de ejecución se documentan en el Anexo C. El pipeline completo —desde la lectura del archivo Parquet hasta la generación de las 17 figuras y las métricas reportadas en el Capítulo 6— es ejecutable de manera autocontenida y determinista.
+En cuanto a la reproducibilidad, todos los modelos estocásticos fijan semilla aleatoria (\texttt{random\_state=42}). El código completo, las versiones de librerías utilizadas y las instrucciones de ejecución se documentan en el Anexo C. El pipeline completo —desde la lectura del archivo Parquet hasta la generación de las 17 figuras y las métricas reportadas en el Capítulo 6— es ejecutable de manera autocontenida y determinista.
 
 % =========================================================================
 % CAPÍTULO 5
@@ -480,7 +449,7 @@ Todos los modelos estocásticos fijan semilla aleatoria (\texttt{random\_state=4
 
 Las figuras de este capítulo se generaron ejecutando directamente el pipeline de datos reales descrito en el Capítulo 3 y en el Anexo C; no se trata de gráficas ilustrativas sino de la salida real del código sobre el panel de 1690 observaciones (126 instituciones).
 
-\section{Distribución del IMOR}
+\section{Comportamiento del IMOR}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{fig01_distribucion_imor.png}
@@ -489,7 +458,6 @@ Las figuras de este capítulo se generaron ejecutando directamente el pipeline d
 \end{figure}
 La distribución (Figura \ref{fig:dist_imor}) es fuertemente asimétrica a la derecha, con media de \textit{14.56\%} y desviación estándar de \textit{19.04\%} sobre un rango observado de 0\% a 100\%. La elevada dispersión confirma la heterogeneidad estructural del sector: coexisten instituciones con carteras sanas, con IMOR cercano a cero, con otras en estados de deterioro extremo, con IMOR de 100\% (cartera íntegramente vencida), reflejando episodios de instituciones en proceso de revocación de licencia documentados en boletines oficiales.
 
-\section{Evolución Temporal del IMOR}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{fig02_evolucion_imor.png}
@@ -497,6 +465,14 @@ La distribución (Figura \ref{fig:dist_imor}) es fuertemente asimétrica a la de
 \label{fig:evol_imor}
 \end{figure}
 La Figura \ref{fig:evol_imor} muestra la trayectoria del IMOR promedio del sector junto con su dispersión transversal. La amplitud de la banda de dispersión, consistentemente mayor que el nivel medio, refuerza la conclusión de heterogeneidad: no existe un ``ciclo de morosidad sectorial'' único, sino trayectorias muy distintas entre instituciones que un modelo panel debe aprender a discriminar mediante variables idiosincráticas (rezagos propios) más que mediante una tendencia común.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{fig06_boxplot_instituciones.png}
+\caption{Distribución del IMOR para las 10 SOFIPOs con mayor historia disponible en el panel. Fuente: elaboración propia.}
+\label{fig:boxplot}
+\end{figure}
+La comparación entre instituciones (Figura \ref{fig:boxplot}) evidencia diferencias sustanciales tanto en el nivel central como en la dispersión del IMOR, lo que justifica metodológicamente el uso de rezagos institución-específicos (en lugar de, por ejemplo, únicamente el promedio sectorial) como predictor dominante, hallazgo que se confirma cuantitativamente en el análisis de importancia de variables del Capítulo 6.
 
 \section{Evolución del NICAP}
 \begin{figure}[H]
@@ -510,31 +486,23 @@ La Figura \ref{fig:evol_imor} muestra la trayectoria del IMOR promedio del secto
 El promedio simple del NICAP reportado en el boletín crudo de la CNBV asciende a \textbf{88{,}627\%}, cifra evidentemente no representativa de una razón de capitalización típica. El análisis de la columna revela que, si bien la mediana es de 218.5\% y el rango intercuartílico va de 147\% a 568\% —valores razonables para instituciones de microfinanzas—, existen observaciones extremas de hasta $4.97\times10^{7}\%$ en un número reducido de instituciones, previsiblemente asociadas a activos ponderados por riesgo cercanos a cero o errores de captura en el boletín oficial. Esta anomalía se documenta explícitamente, tal como exige el rigor científico, y se trata mediante rezagos y medias robustas en el pipeline de modelado en lugar de eliminarse arbitrariamente, evitando así both la omisión de un hallazgo relevante y la distorsión de las métricas de los modelos, que utilizan el NICAP como predictor (no como variable a promediar directamente para fines descriptivos).
 \end{tcolorbox}
 
-\section{Variables Macroeconómicas}
+\section{Variables Macroeconómicas y Correlaciones}
+La Figura \ref{fig:macro} presenta la evolución de las variables macroeconómicas incorporadas al panel durante el periodo de estudio.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{fig04_variables_macro.png}
-\caption{Evolución de las variables macroeconómicas incorporadas al panel (TIIE 28, inflación, IGAE, tipo de cambio). Fuente: elaboración propia; series generadas de forma sintética determinista ante la indisponibilidad del token de Banxico (véase Sección 1.11).}
+\caption{Evolución de las variables macroeconómicas incorporadas al panel (TIIE 28, inflación, IGAE, tipo de cambio). Fuente: elaboración propia; series generadas de forma sintética determinista ante la indisponibilidad del token de Banxico (véase Sección \ref{sec:limitaciones}).}
 \label{fig:macro}
 \end{figure}
 
-\section{Correlaciones}
+Por su parte, la Figura \ref{fig:corr} muestra la matriz de correlación entre las variables del panel de modelado.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{fig05_correlaciones.png}
 \caption{Matriz de correlación de las variables del panel de modelado. Fuente: elaboración propia.}
 \label{fig:corr}
 \end{figure}
-La Figura \ref{fig:corr} confirma, como es esperable, una fuerte autocorrelación entre el IMOR contemporáneo y sus rezagos y medias móviles (coeficientes superiores a 0.7), mientras que las correlaciones entre el IMOR y las variables macroeconómicas son de magnitud moderada, consistente con el hecho de que estas últimas afectan la morosidad de forma indirecta y con rezago, y de forma heterogénea entre instituciones.
-
-\section{Comparación entre Instituciones}
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.9\textwidth]{fig06_boxplot_instituciones.png}
-\caption{Distribución del IMOR para las 10 SOFIPOs con mayor historia disponible en el panel. Fuente: elaboración propia.}
-\label{fig:boxplot}
-\end{figure}
-La comparación entre instituciones (Figura \ref{fig:boxplot}) evidencia diferencias sustanciales tanto en el nivel central como en la dispersión del IMOR, lo que justifica metodológicamente el uso de rezagos institución-específicos (en lugar de, por ejemplo, únicamente el promedio sectorial) como predictor dominante, hallazgo que se confirma cuantitativamente en el análisis de importancia de variables del Capítulo 6.
+La matriz confirma, como es esperable, una fuerte autocorrelación entre el IMOR contemporáneo y sus rezagos y medias móviles (coeficientes superiores a 0.7), mientras que las correlaciones entre el IMOR y las variables macroeconómicas son de magnitud moderada, consistente con el hecho de que estas últimas afectan la morosidad de forma indirecta y con rezago, y de forma heterogénea entre instituciones.
 
 \section{Conclusiones del Análisis Exploratorio}
 El análisis exploratorio confirma tres hechos estilizados que justifican las decisiones metodológicas de los capítulos subsecuentes:
@@ -552,7 +520,10 @@ El análisis exploratorio confirma tres hechos estilizados que justifican las de
 % =========================================================================
 \chapter{Resultados de los Modelos}
 
-\section{Modelos de Regresión: Predicción del IMOR Futuro}
+Este capítulo presenta los resultados obtenidos al aplicar la metodología del Capítulo 3: primero los modelos de regresión para predecir el IMOR y otras variables objetivo, después el clasificador de insolvencia crítica, su interpretación mediante SHAP y, finalmente, la comparación entre modelos panel y univariados.
+
+\section{Modelos de Regresión}
+La Tabla \ref{tab:comparativa_regresion} resume el desempeño de los modelos de regresión para la predicción del IMOR futuro sobre el conjunto de prueba.
 \begin{table}[H]
 \centering
 \caption{Comparativa de Modelos de Regresión (conjunto de prueba, 20\% final cronológico)}
@@ -598,13 +569,11 @@ La distribución de residuos (Figura \ref{fig:residuos}) se concentra alrededor 
 \end{figure}
 La Figura \ref{fig:feat_imp} confirma cuantitativamente la intuición del Capítulo 5: la media móvil de 3 trimestres del IMOR (\texttt{IMOR\_ma3}, importancia relativa 0.352) es la variable individual más relevante, seguida del IMOR contemporáneo (0.272) y de la media móvil de 6 trimestres (0.173). Las variables macroeconómicas y de rentabilidad (NICAP, tasa implícita, gastos de administración, ROA) contribuyen conjuntamente con menos del 15\% de la importancia total, lo que sugiere que, para el horizonte de un trimestre, la inercia propia de la morosidad domina sobre el entorno macroeconómico contemporáneo —un resultado económicamente razonable dado que el deterioro crediticio es un proceso con alta persistencia temporal.
 
-\section{Modelos Multi-Objetivo}
-Para las variables objetivo NICAP futuro y Resultado Neto futuro, comparando Random Forest contra Gradient Boosting sobre un conjunto de predictores rezagados y macroeconómicos, se obtuvo: mejor modelo para IMOR futuro = Gradient Boosting (MSE = 87.49); mejor modelo para NICAP futuro = Random Forest (MSE = $7.23\times10^{12}$, cifra dominada por los valores atípicos extremos documentados en el Capítulo 5); mejor modelo para Resultado Neto futuro = Gradient Boosting (MSE = $9.27\times10^{8}$, en unidades de miles de pesos al cuadrado, reflejando la alta dispersión de escala entre instituciones grandes y pequeñas).
+Además del IMOR, se modelaron otras dos variables objetivo. Para las variables objetivo NICAP futuro y Resultado Neto futuro, comparando Random Forest contra Gradient Boosting sobre un conjunto de predictores rezagados y macroeconómicos, se obtuvo: mejor modelo para IMOR futuro = Gradient Boosting (MSE = 87.49); mejor modelo para NICAP futuro = Random Forest (MSE = $7.23\times10^{12}$, cifra dominada por los valores atípicos extremos documentados en el Capítulo 5); mejor modelo para Resultado Neto futuro = Gradient Boosting (MSE = $9.27\times10^{8}$, en unidades de miles de pesos al cuadrado, reflejando la alta dispersión de escala entre instituciones grandes y pequeñas).
 
 \section{Clasificación de Insolvencia Crítica}
 La variable objetivo binaria se define como $Default_{t+1} = \mathbb{I}(IMOR_{t+1}>10\%)$. El umbral de 10\% corresponde a un nivel de morosidad sustancialmente superior al promedio del sistema bancario comercial mexicano y se adopta como proxy de deterioro crítico consistente con la práctica de la literatura de riesgo de crédito en microfinanzas.
 
-\subsection{Desbalance de Clases y SMOTE-ENN}
 En el conjunto de entrenamiento (951 observaciones), la clase minoritaria (\textit{Default}=1) representaba el \textbf{49.11\%} de las observaciones antes del remuestreo. Se trata, por tanto, de un desbalance \textbf{moderado, no severo}, resultado del elevado nivel medio de morosidad documentado en el Capítulo 5 (media de 14.56\%, muy por encima del umbral de 10\%). Tras aplicar SMOTE-ENN, el conjunto de entrenamiento se redujo a 289 observaciones con 44.98\% de clase minoritaria, reflejando que la fase ENN depuró un número considerable de observaciones ambiguas en la frontera de decisión.
 
 \begin{table}[H]
@@ -625,7 +594,7 @@ MCC & 0.6873 \\
 \end{tabularx}
 \end{table}
 
-\subsection{Arquitectura del Ensamble}
+La Tabla \ref{tab:stacking} resume el desempeño del clasificador, cuya arquitectura se muestra en la Figura \ref{fig:stacking_arq}.
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
@@ -725,16 +694,16 @@ Como se aprecia en la Figura \ref{fig:mae_comp}, ARIMA exhibe el menor MAE prome
 % =========================================================================
 \chapter{Discusión de Resultados}
 
+En este capítulo se interpretan los resultados del Capítulo 6 a la luz de las hipótesis planteadas y se discuten los riesgos metodológicos, las fortalezas y las limitaciones del estudio.
+
 \section{Interpretación de Hallazgos}
 Los resultados sustentan parcialmente la hipótesis H1: los modelos panel de aprendizaje automático (XGBoost, $R^2=0.6126$) ofrecen una capacidad de generalización across-institución que ningún modelo univariado puede replicar, en particular para instituciones de historia corta donde ARIMA/SARIMA son inaplicables. Sin embargo, en términos de error absoluto puro sobre instituciones consolidadas, ARIMA univariado presenta menor MAE, por lo que la superioridad de los modelos panel debe entenderse como una superioridad de \textbf{cobertura y generalización}, no como una superioridad estricta y universal del error puntual.
 
-\section{Efecto de las Variables Macroeconómicas}
-Contrario a resultados reportados en versiones preliminares no verificadas, el análisis SHAP reproducido muestra que las variables macroeconómicas contribuyen de forma secundaria (encabezadas por la inflación) frente al peso dominante de la propia historia institucional del IMOR y del NICAP. Esto es consistente con un horizonte de predicción corto (un trimestre): a ese plazo, la inercia contable domina sobre el entorno macroeconómico, cuyo efecto es previsiblemente más relevante a horizontes más largos, no evaluados en esta tesis.
+Respecto al efecto de las variables macroeconómicas, y contrario a resultados reportados en versiones preliminares no verificadas, el análisis SHAP reproducido muestra que las variables macroeconómicas contribuyen de forma secundaria (encabezadas por la inflación) frente al peso dominante de la propia historia institucional del IMOR y del NICAP. Esto es consistente con un horizonte de predicción corto (un trimestre): a ese plazo, la inercia contable domina sobre el entorno macroeconómico, cuyo efecto es previsiblemente más relevante a horizontes más largos, no evaluados en esta tesis.
 
-\section{Riesgos de Sobreajuste y Fuga de Información (\textit{Leakage})}
+\section{Riesgos Metodológicos, Fortalezas y Limitaciones}
 Se realizó una revisión explícita del código para descartar fuentes de \textit{leakage}: (i) la partición train/test es estrictamente cronológica (\texttt{shuffle=False}); (ii) el remuestreo SMOTE-ENN se aplica únicamente sobre el conjunto de entrenamiento, después de la partición, evitando que observaciones sintéticas basadas en el conjunto de prueba contaminen la evaluación; (iii) los rezagos y medias móviles se calculan exclusivamente con información disponible hasta el periodo $t$, y la variable objetivo se construye mediante desplazamiento hacia adelante (\texttt{shift(-1)}) dentro de cada institución, evitando mezclar información de una institución con otra. No se identificó \textit{target leakage} directo. El principal riesgo residual es la validación cruzada de 5 particiones utilizada dentro del Stacking, que —al no ser estrictamente temporal— podría introducir una sobreestimación leve del desempeño reportado en el conjunto de entrenamiento (no en el conjunto de prueba final, que permanece aislado cronológicamente en todo momento).
 
-\section{Fortalezas y Limitaciones}
 \textbf{Fortalezas:} pipeline reproducible extremo a extremo; validación temporal correctamente implementada; documentación explícita de una anomalía de datos (NICAP) en lugar de su ocultamiento; interpretabilidad mediante SHAP. \textbf{Limitaciones:} variables macroeconómicas sintéticas en esta ejecución; horizonte de predicción limitado a un trimestre; tamaño muestral moderado (1189 observaciones) para un modelo de boosting con múltiples hiperparámetros, lo que exige cautela ante el riesgo de sobreajuste al reentrenar con datos futuros.
 
 % =========================================================================
@@ -742,7 +711,6 @@ Se realizó una revisión explícita del código para descartar fuentes de \text
 % =========================================================================
 \chapter{Sistema de Alerta Temprana}
 
-\section{Arquitectura Conceptual}
 El sistema propuesto ingiere los boletines trimestrales de la CNBV, ejecuta el pipeline de limpieza e ingeniería de características, genera una probabilidad de \textit{Default} mediante el clasificador Stacking, y clasifica a cada institución en un nivel de riesgo:
 \begin{itemize}
     \item \textbf{Riesgo bajo (verde):} probabilidad predicha $<0.30$.
@@ -751,26 +719,22 @@ El sistema propuesto ingiere los boletines trimestrales de la CNBV, ejecuta el p
 \end{itemize}
 Estos umbrales son una propuesta operativa basada en la distribución de probabilidades observada en la Figura \ref{fig:probdist}; su calibración final requeriría validación conjunta con el área de supervisión de la CNBV y no debe interpretarse como un estándar regulatorio ya adoptado.
 
-\section{Flujo de Decisión}
-Ante una alerta roja, se recomienda: (i) revisión prioritaria por parte del supervisor de área; (ii) solicitud de plan de fortalecimiento de capital si el NICAP se aproxima a las categorías 2--3 definidas en el Capítulo 2; (iii) descomposición SHAP individual de la predicción para identificar los factores específicos que la originaron.
+En cuanto al flujo de decisión, ante una alerta roja, se recomienda: (i) revisión prioritaria por parte del supervisor de área; (ii) solicitud de plan de fortalecimiento de capital si el NICAP se aproxima a las categorías 2--3 definidas en el Capítulo 2; (iii) descomposición SHAP individual de la predicción para identificar los factores específicos que la originaron.
 
 % =========================================================================
 % CAPÍTULO 9
 % =========================================================================
 \chapter{Implementación y Aplicación Práctica}
 
-\section{Arquitectura Productiva}
 Una implementación en producción requeriría: automatización de la ingesta trimestral (parseo de boletines CNBV), almacenamiento incremental en Parquet, reentrenamiento periódico (recomendado: anual, o ante evidencia de \textit{drift}), monitoreo de \textit{data drift} (cambios en la distribución de las variables de entrada) y \textit{model drift} (degradación del desempeño predictivo en el tiempo), y un proceso de gobernanza que documente cada versión del modelo y su desempeño histórico.
 
-\section{Seguridad y Gobernanza}
-El acceso a las predicciones a nivel institución debe restringirse a personal supervisor autorizado, dado su carácter sensible; los datos agregados sectoriales pueden difundirse públicamente sin dicha restricción.
+En materia de seguridad y gobernanza, el acceso a las predicciones a nivel institución debe restringirse a personal supervisor autorizado, dado su carácter sensible; los datos agregados sectoriales pueden difundirse públicamente sin dicha restricción.
 
 % =========================================================================
 % CAPÍTULO 10
 % =========================================================================
 \chapter{Comparativa Internacional y Trabajo Futuro}
 
-\section{Econometría vs. Machine Learning}
 La evidencia de esta tesis es consistente con la literatura internacional: los modelos de aprendizaje automático en panel no eliminan la utilidad de la econometría clásica, sino que la complementan, especialmente en presencia de heterogeneidad institucional y necesidad de generalización a entidades con historia corta.
 
 \section{Trabajo Futuro}
@@ -787,7 +751,6 @@ La evidencia de esta tesis es consistente con la literatura internacional: los m
 % =========================================================================
 \chapter{Conclusiones y Recomendaciones}
 
-\section{Conclusiones Generales}
 Se cumplió el objetivo general: se diseñó, implementó y validó empíricamente un sistema de alerta temprana híbrido. El modelo XGBoost fue el de mejor desempeño en regresión ($R^2=0.6126$); el ensamble Stacking con SMOTE-ENN fue efectivo para la clasificación de insolvencia (ROC-AUC=0.9148). El aprendizaje automático aportó capacidad de generalización transversal entre instituciones; la econometría clásica aportó un punto de referencia riguroso para instituciones con historia extensa. Un sistema de alerta temprana basado en estos componentes es viable como herramienta complementaria —no sustitutiva— de la supervisión prudencial tradicional.
 
 \section{Comprobación de Hipótesis}

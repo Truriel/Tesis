@@ -3,21 +3,177 @@
 % =========================================================================
 \chapter{Marco Metodológico}
 
-Este capítulo describe el diseño de la investigación, el conjunto de datos utilizado, la operacionalización de las variables, el proceso de preparación de datos, los modelos entrenados con su esquema de validación temporal y las métricas con las que se evalúa su desempeño.
+Este capítulo explica, desde cero, cómo se construyó el estudio. Está escrito para que una persona sin conocimientos previos de programación, estadística o finanzas pueda seguir cada paso. Por ello cada concepto se presenta en el mismo orden: primero en lenguaje sencillo, después con su formulación, luego con un ejemplo pequeño y, al final, con la explicación de por qué se hizo de esa manera y qué consecuencia tiene para la validez de los resultados. El orden de las secciones sigue el orden real de ejecución del pipeline computacional: primero se definen el diseño y el conjunto de datos, después se transforman los datos, más tarde se entrenan los modelos y, por último, se miden sus resultados.
+
+Desde el inicio conviene distinguir dos tipos de decisiones. Algunas son correctas y se describen como tales. Otras introducen limitaciones que afectan la interpretación de los resultados; estas se señalan en el texto en el momento en que aparecen y se recogen de forma consolidada en la sección de amenazas a la validez y reproducibilidad. Las cifras de resultados del Capítulo 6 no se reproducen en este capítulo.
 
 \section{Paradigma, Enfoque y Diseño de Investigación}
-La investigación se inscribe en el paradigma positivista con enfoque cuantitativo, apoyado en el empirismo estadístico y la reproducibilidad computacional. El diseño es no experimental (las variables no se manipulan deliberadamente), longitudinal de datos panel (dimensión transversal de instituciones y temporal de trimestres) y de alcance explicativo-predictivo.
+
+\subsection{Paradigma positivista y enfoque cuantitativo}
+Un paradigma de investigación es un conjunto de supuestos sobre qué es el conocimiento y cómo se obtiene. El paradigma positivista sostiene que los fenómenos económicos y financieros pueden describirse mediante regularidades observables y verificables, y que una hipótesis se acepta o se rechaza según la evidencia empírica. En este estudio ese supuesto se traduce en una práctica concreta: las preguntas se responden con datos numéricos, con procedimientos explícitos y con métricas que cualquier lector puede recalcular a partir de los mismos datos.
+
+El enfoque cuantitativo consiste en medir las variables con números, contrastar relaciones mediante modelos matemáticos y reportar la incertidumbre de las estimaciones. Su contraparte, el enfoque cualitativo, trabaja con textos, entrevistas u observaciones y busca comprender significados. Aquí no se pretende interpretar el sentido que los directivos dan a sus decisiones, sino medir con qué precisión los datos contables y macroeconómicos pueden anticipar el deterioro de la cartera de crédito de las SOFIPOs. La reproducibilidad computacional, es decir, la posibilidad de que otra persona ejecute el mismo código con los mismos datos y obtenga los mismos números, es un requisito del enfoque y se trata en la sección de entorno computacional.
+
+\subsection{Diseño no experimental}
+Un diseño experimental asigna tratamientos a unidades de forma controlada; por ejemplo, obliga a unas instituciones a aplicar una política y a otras no, y compara después los resultados. Un diseño no experimental observa lo que ocurrió sin intervenir. Aquí las variables no se manipulan: el índice de morosidad, el nivel de capitalización o el resultado de cada SOFIPO se toman tal como los reportó la Comisión Nacional Bancaria y de Valores (Comisión Nacional Bancaria y de Valores, s. f.).
+
+Esta decisión tiene una consecuencia directa para la interpretación. Los resultados describen asociaciones predictivas y no efectos causales. Si el índice de morosidad aumenta después de que cae la rentabilidad, el modelo puede aprovechar esa relación para anticipar la morosidad futura, pero no puede afirmar que la caída de la rentabilidad sea la causa del deterioro. Esta distinción entre asociación y causalidad es clásica en la econometría (Wooldridge, 2010) y se retoma en las amenazas a la validez.
+
+\subsection{Diseño longitudinal de panel}
+Los datos son longitudinales porque siguen a las mismas instituciones a lo largo del tiempo. Son de panel porque combinan dos dimensiones: una transversal, que corresponde a las instituciones, y una temporal, que corresponde a los trimestres. Un ejemplo sencillo: si tres SOFIPOs reportan cada trimestre durante cuatro trimestres, el panel contiene 3 por 4, es decir, 12 observaciones. Cada fila del panel es una institución en un trimestre; en este capítulo a esa fila se le llama observación institución-trimestre.
+
+Un panel es balanceado cuando todas las instituciones tienen observaciones en todos los periodos, y no balanceado cuando algunas tienen huecos o entran y salen de la muestra en momentos distintos. El panel de este estudio es no balanceado: las SOFIPOs tienen historias de longitud diferente, algunas se incorporaron después de 2015 y otras dejaron de reportar o cambiaron de estatus. Esta característica tiene consecuencias prácticas. El número de observaciones por institución varía, y los procedimientos de limpieza y de creación de rezagos deben tratar a cada institución por separado, de manera que la información de una no se mezcle con la de otra. Así se explica en la sección de preparación de datos.
+
+\subsection{Alcance explicativo-predictivo}
+Una investigación explicativa busca entender por qué ocurren los fenómenos; una investigación predictiva busca anticipar valores futuros con la mayor precisión posible. El estudio combina ambos alcances. Es predictivo porque el objetivo principal es estimar el índice de morosidad del trimestre siguiente y la probabilidad de que una institución supere un umbral crítico. Es explicativo en un sentido limitado porque, al comparar modelos y examinar la contribución de cada variable mediante valores SHAP, se busca identificar qué información contable y macroeconómica aporta a la predicción. Esa identificación no equivale a causalidad, como ya se señaló.
+
+\subsection{Preguntas, hipótesis y justificación del diseño}
+La pregunta central es si la información contable y macroeconómica disponible en un trimestre permite anticipar el deterioro de la morosidad de las SOFIPOs en el trimestre siguiente y, en caso afirmativo, con qué precisión. De esa pregunta se derivan dos tareas. La primera es de regresión: estimar el valor numérico del índice de morosidad futuro. La segunda es de clasificación: estimar si la institución superará un umbral crítico de morosidad. Ambas tareas comparten el mismo panel de datos y la misma lógica de validación.
+
+Las hipótesis H1 y H1a se formulan en la introducción y se retoman en las conclusiones. Este capítulo no reproduce su redacción; describe cómo se contrastan. El contraste se realiza comparando el error de predicción de los modelos de panel con el de los modelos univariados clásicos, y examinando la contribución de las variables macroeconómicas dentro de los modelos de panel. % VERIFICAR: la formulación de H1 y H1a debe coincidir textualmente con la introducción y las conclusiones; este capítulo no la reproduce.
+
+Se combinan dos familias de modelos por una razón. Los modelos univariados clásicos, como ARIMA, son la referencia habitual de la econometría de series de tiempo (Box y Jenkins, 1976), pero estiman cada institución por separado y no aprovechan la información de las demás. Los modelos de panel, en cambio, aprenden de todas las instituciones a la vez, pueden capturar relaciones no lineales y umbrales, y pueden generalizar a instituciones con historia corta (Hastie et al., 2009). La comparación entre ambos enfoques permite saber si el costo de entrenar modelos más complejos se justifica con una mejora medible del error.
+
+\subsection{Entorno computacional y reproducibilidad}
+Todo el procesamiento se realiza con un único script de Python que lee un archivo en formato Parquet, limpia y transforma los datos, entrena los modelos, genera las figuras y escribe los resultados numéricos en un archivo JSON. Un archivo Parquet es un formato binario y comprimido que guarda tablas por columnas; es más rápido de leer que un archivo de texto y conserva los tipos de dato. El archivo JSON es un formato de texto estructurado con pares de nombre y valor, que permite a cualquier programa leer los resultados sin depender del entorno en que se generaron.
+
+La Tabla \ref{tab:met_librerias} resume las herramientas empleadas, su función dentro del pipeline y la referencia que documenta cada una. Se eligieron bibliotecas de código abierto y ampliamente usadas en la comunidad académica, porque su comportamiento está documentado y puede verificarse por cualquier lector.
+
+\begin{table}[H]
+\centering
+\caption{Herramientas computacionales empleadas y función dentro del pipeline}
+\label{tab:met_librerias}
+\small
+\begin{tabularx}{\textwidth}{p{3.2cm}Xp{3.2cm}}
+\toprule
+\textbf{Herramienta} & \textbf{Función en el pipeline} & \textbf{Referencia} \\
+\midrule
+NumPy & Operaciones numéricas sobre arreglos y generación de números aleatorios & Harris et al., 2020 \\
+pandas & Tablas de datos en memoria, uniones entre tablas y interfaz común de los modelos & McKinney, 2010 \\
+Polars & Transformaciones rápidas de tablas: ordenación, rezagos, medias móviles y filtros por grupo & (documentación del proyecto Polars) \\
+DuckDB & Consultas SQL sobre el archivo Parquet y limpieza de valores faltantes & Raasveldt y Mühleisen, 2019 \\
+requests & Solicitudes HTTP a la API SIE de Banco de México & (documentación del proyecto requests) \\
+scikit-learn & Particiones, validación cruzada, búsqueda en rejilla, bosques aleatorios, regresión logística y métricas & Pedregosa et al., 2011 \\
+XGBoost & Modelos de gradient boosting con regularización & Chen y Guestrin, 2016 \\
+LightGBM & Modelos de gradient boosting por hojas & Ke et al., 2017 \\
+statsmodels & Estimación de modelos ARIMA y SARIMAX & Seabold y Perktold, 2010 \\
+imbalanced-learn & Remuestreo SMOTE-ENN para clases desbalanceadas & Lemaître et al., 2017 \\
+SHAP & Explicación de predicciones de modelos de árboles mediante valores de Shapley & Lundberg y Lee, 2017; Lundberg et al., 2020 \\
+matplotlib & Generación de las figuras en formato PNG & Hunter, 2007 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% VERIFICAR: las referencias sin año (Polars y requests) no están en la lista de fuentes permitidas; deben citarse como documentación del proyecto o eliminarse según la bibliografía final.
+
+Cada una de estas herramientas se usa en una parte concreta del proceso y no en otra. DuckDB se emplea donde conviene escribir la limpieza como consulta SQL, porque SQL es el lenguaje estándar para seleccionar, filtrar y resumir tablas. Polars se emplea donde se necesitan cálculos por grupo, como un rezago dentro de cada institución, porque expresa esas operaciones de forma compacta y eficiente. Pandas se usa para unir tablas y para pasar los datos a scikit-learn, XGBoost, LightGBM y statsmodels, que esperan ese formato. Esta división no es un capricho: cada herramienta se eligió por la tarea que resuelve mejor, y la consecuencia es que el pipeline mezcla tres formas de expresar operaciones sobre tablas, lo que aumenta la complejidad para un lector nuevo.
+
+Para garantizar que los resultados puedan repetirse, el código fija una semilla de números aleatorios con el valor 42. La semilla es un número que inicializa el generador de números pseudoaleatorios; si se fija el mismo valor, la secuencia de números generados es la misma en cada ejecución. El código la aplica de dos formas: con np.random.seed, que afecta a NumPy, y con el argumento random\_state en cada modelo y en cada partición que lo admite. Esto es necesario porque los bosques aleatorios y el gradient boosting usan azar para elegir muestras y variables en cada árbol; sin una semilla fija, dos ejecuciones con los mismos datos darían resultados ligeramente distintos. % VERIFICAR: el código no incluye un archivo con las versiones exactas de las bibliotecas; para reproducir los resultados conviene registrar esas versiones en el entorno de ejecución.
+
+Las figuras se generan con matplotlib usando el backend Agg, que dibuja en memoria sin abrir ventanas y permite ejecutar el pipeline en un servidor o en una computadora sin pantalla. La resolución se fija en 350 puntos por pulgada (dpi) mediante dos parámetros: figure.dpi, que controla la resolución en pantalla, y savefig.dpi, que controla la resolución del archivo guardado. Los puntos por pulgada indican cuántos píxeles caben en cada pulgada de la figura. Una figura de 8 por 4.5 pulgadas guardada a 350 dpi produce un archivo de 2800 por 1575 píxeles (8 por 350 y 4.5 por 350). Una resolución de 350 dpi es alta y adecuada para impresión; en pantalla bastan 100 o 150 dpi, pero para un documento impreso o ampliado conviene una resolución mayor para que las líneas y el texto no se vean pixelados.
 
 \section{Conjunto de Datos}
-La población objetivo corresponde a la totalidad de SOFIPOs reportantes ante la CNBV entre 2015 y 2025 (151 nombres distintos identificados en el boletín estadístico oficial). Tras el filtro de estatus ``En operación'' y la depuración de valores nulos en variables clave (IMOR, Activo Total, Cartera Vigente), el panel bruto de trabajo comprende \textbf{126 instituciones} y \textbf{1690 observaciones institución-trimestre}. Tras exigir un mínimo de 6 observaciones consecutivas por institución (necesario para construir de manera consistente los rezagos de orden 3 y las medias móviles de 6 periodos) y eliminar registros sin variable objetivo futura, el panel final de modelado comprende \textbf{46 instituciones} y \textbf{1189 observaciones}. El periodo cubierto por los datos disponibles abarca del primer trimestre de 2015 al tercer trimestre de 2025, y la información proviene de las siguientes fuentes:
-\begin{itemize}
-    \item \textbf{CNBV:} Boletín estadístico de Sociedades Financieras Populares (variable dependiente IMOR, NICAP, activos, cartera, resultado neto y demás partidas contables).
-    \item \textbf{Variables macroeconómicas:} TIIE 28, inflación (INPC), tipo de cambio USD/MXN, Cetes 28 e IGAE. En la ejecución reproducida para esta tesis dichas series se generaron de forma sintética determinista ante la indisponibilidad del token de acceso a la API de Banco de México incluido en el script original (véase limitación explícita en la Sección \ref{sec:limitaciones} y nota metodológica en el Capítulo 5).
-\end{itemize}
+
+\subsection{Población, unidad de análisis y fuente}
+La población objetivo corresponde a la totalidad de las Sociedades Financieras Populares (SOFIPOs) reportantes ante la Comisión Nacional Bancaria y de Valores entre 2015 y 2025. Las SOFIPOs son entidades financieras no bancarias que otorgan créditos, principalmente de consumo y de microfinanciamiento, a personas y pequeñas empresas. Su supervisión y su información financiera se publican en el boletín estadístico de la CNBV (Comisión Nacional Bancaria y de Valores, s. f.). El marco contable que regula la presentación de los estados financieros de estas entidades se describe en la sección \ref{sec:estados_financieros} del marco teórico, con base en las Normas de Información Financiera (Consejo Mexicano de Normas de Información Financiera, s. f.).
+
+La unidad de análisis es la observación institución-trimestre: una SOFIPO en un trimestre determinado. Cada fila del archivo de datos corresponde a una de estas unidades. El boletín contiene 151 nombres distintos de instituciones en el periodo. % VERIFICAR: la cifra de 151 nombres proviene del capítulo previo y no se reproduce en el código; debe confirmarse con un conteo directo del archivo sofipo\_base\_completa.parquet.
+
+El archivo de origen se llama sofipo\_base\_completa.parquet. Cada fila de esa tabla corresponde a un reporte institucional en un periodo, con las columnas que se describen en la siguiente subsección. Antes de usarla, el pipeline la lee directamente desde el archivo, sin pasar por una base de datos intermedia, y le aplica las transformaciones que se explican en la sección de preparación de datos.
+
+\subsection{Qué es un panel no balanceado y cómo se redujo la muestra}
+La reducción de la muestra sigue una secuencia de filtros. Cada filtro tiene una razón metodológica y una consecuencia sobre el tamaño del panel. La Tabla \ref{tab:met_embudo} resume esa secuencia con las cifras que reporta este capítulo.
+
+\begin{table}[H]
+\centering
+\caption{Reducción de la muestra desde el boletín hasta el panel de modelado}
+\label{tab:met_embudo}
+\small
+\begin{tabularx}{\textwidth}{Xrr}
+\toprule
+\textbf{Etapa} & \textbf{Instituciones} & \textbf{Observaciones} \\
+\midrule
+Nombres distintos reportados en el boletín & 151 & No reportado \\
+Filas tras filtro de estatus ``En operación'', imputación y eliminación de nulos en IMOR, Activo Total y Cartera Vigente, y tras crear rezagos (eliminación de las primeras tres filas por institución) & 126 & 1690 \\
+Filas tras exigir al menos 6 observaciones por institución & 46 & No reportado \\
+Panel final de modelado, tras eliminar filas sin valor objetivo futuro y sin rezago de la variable objetivo & 46 & 1189 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% VERIFICAR: el número de observaciones tras el filtro de mínimo 6 no se reporta en el código; la cifra de 1189 es la del panel final y debe confirmarse ejecutando el pipeline.
+
+Un ejemplo muestra por qué cada filtro reduce la muestra. Supóngase una SOFIPO con reportes en siete trimestres consecutivos. Los rezagos de orden 3 requieren tres trimestres anteriores, así que el primer trimestre utilizable es el cuarto; quedan cuatro observaciones. Como el objetivo es el índice del trimestre siguiente, el último trimestre tampoco tiene objetivo, y quedan tres. El filtro de mínimo 6 eliminaría esta institución por completo, porque el panel exige al menos seis filas tras los rezagos. En la práctica esto ocurre en todas las instituciones con historia corta: el filtro protege la estabilidad de los rezagos y de las medias móviles, pero excluye a las entidades más jóvenes, que son justamente las que más interesan para evaluar la generalización de los modelos.
+
+\subsection{Columnas del boletín y su relación con los estados financieros}
+El código procesa catorce columnas numéricas del boletín, además de las columnas de identificación Nombre, Periodo y Estatus. La Tabla \ref{tab:met_columnas} explica qué significa cada una y en qué parte de los estados financieros aparece. Las explicaciones se basan en la estructura general de los estados financieros de las SOFIPOs, que se detalla en la sección \ref{sec:estados_financieros}.
+
+\begin{table}[H]
+\centering
+\caption{Columnas del boletín procesadas por el pipeline}
+\label{tab:met_columnas}
+\small
+\begin{tabularx}{\textwidth}{p{4.2cm}Xp{3.6cm}}
+\toprule
+\textbf{Columna} & \textbf{Qué mide} & \textbf{Dónde aparece} \\
+\midrule
+Nombre & Identificador de la institución; se usa para agrupar observaciones & Identificación del boletín \\
+Periodo & Trimestre de corte del reporte & Fecha del reporte \\
+Estatus & Situación regulatoria de la institución; se filtra por ``En operación'' & Identificación del boletín \\
+Activo Total (miles de pesos) & Suma de los recursos controlados por la institución & Balance general \\
+Cartera Vigente (miles de pesos) & Créditos al corriente en sus pagos & Balance general, cartera de crédito \\
+Cartera Vencida (miles de pesos) & Créditos con atraso en sus pagos & Balance general, cartera de crédito \\
+IMOR 1/ (\%) & Índice de morosidad: cartera vencida entre cartera total & Cálculo a partir de la cartera \\
+NIVEL DE CAPITALIZACIÓN 2/ (\%), abreviado NICAP & Capital neto como porcentaje de los requerimientos de capital & Cálculo regulatorio de capitalización \\
+Tasa implícita 2/ & Tasa de interés implícita reportada por el boletín & Cálculo a partir de ingresos y cartera \\
+Gastos de administración y promoción & Costos operativos de la institución & Estado de resultados \\
+Gastos por intereses & Costo de los recursos captados y financiados & Estado de resultados \\
+Ingresos por intereses & Ingreso por los créditos otorgados & Estado de resultados \\
+MARGEN FINANCIERO & Diferencia entre ingresos y gastos por intereses, según el boletín & Estado de resultados \\
+Resultado Neto & Utilidad o pérdida del periodo & Estado de resultados \\
+Captación tradicional & Recursos del público captados mediante depósitos & Balance general, pasivo \\
+Requerimiento de Estimaciones Preventivas para Riesgos Crediticios & Reserva que la regulación exige constituir por riesgo de crédito & Cálculo regulatorio de reservas \\
+Estimaciones Preventivas para Riesgos Crediticios Constituidas & Reserva efectivamente creada contra la cartera & Balance general, cartera de crédito \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% VERIFICAR: la definición exacta de la Tasa implícita, del MARGEN FINANCIERO y las notas 1/ y 2/ del boletín deben confirmarse con la nota metodológica de la CNBV antes de la defensa.
+
+No todas estas columnas entran a los modelos. Esto es importante para leer los resultados sin confusiones. Las columnas Cartera Vencida, Ingresos por intereses, Gastos por intereses, MARGEN FINANCIERO, Captación tradicional y las dos columnas de estimaciones preventivas se limpian e imputan igual que las demás, pero no aparecen como predictores en ningún modelo del pipeline. Los predictores efectivos son el índice de morosidad y sus rezagos y medias móviles, el nivel de capitalización, la tasa implícita, la cartera vigente, los gastos de administración y promoción, el ratio de cartera sobre activo, el rendimiento sobre activos y el resultado neto en los rezagos. Esta selección responde a la relevancia teórica que el marco de riesgo de Basilea atribuye a la calidad de la cartera y a la capitalización (Basel Committee on Banking Supervision, 2011), pero también a la disponibilidad de datos completos en el boletín.
+
+\subsection{Periodo cubierto}
+Los datos cubren desde el primer trimestre de 2015 hasta el tercer trimestre de 2025. El periodo es suficiente para observar al menos un ciclo de incremento de la morosidad y su recuperación, aunque no permite estudiar con precisión el efecto de episodios específicos porque cada institución aporta pocas observaciones. % VERIFICAR: la afirmación sobre la existencia de un ciclo completo de morosidad debe sustentarse con la figura de evolución temporal del IMOR sectorial una vez generada la ejecución final.
+
+\subsection{Variables macroeconómicas: qué miden}
+Las variables macroeconómicas describen el entorno en el que operan las instituciones. Se incorporan a cada observación mediante su periodo, de modo que todas las instituciones de un mismo trimestre reciben el mismo valor macroeconómico. El marco conceptual de estas variables se presenta en la sección \ref{sec:macro}. A continuación se explica qué mide cada una.
+
+La tasa de interés interbancaria de equilibrio a 28 días (TIIE 28) es la tasa de referencia a la que las instituciones financieras se prestan fondos entre sí a un plazo de 28 días. Cuando sube, el costo de fondeo de las entidades aumenta, y con él el costo de los créditos a tasa variable. La serie oficial corresponde a la clave SF43783 del Sistema de Información Económica de Banco de México (Banco de México, s. f.).
+
+Los Cetes a 28 días son títulos de deuda del gobierno federal con vencimiento a 28 días. Su rendimiento se considera una aproximación a la tasa libre de riesgo de corto plazo en pesos, y sirve como referencia para el costo de oportunidad de prestar. La serie oficial corresponde a la clave SF60633 (Banco de México, s. f.).
+
+La inflación se mide con la variación anual del Índice Nacional de Precios al Consumidor (INPC). Indica cuánto aumentó en promedio el precio de una canasta de bienes y servicios respecto del mismo mes del año anterior. Su efecto sobre la morosidad puede ser doble: reduce el poder adquisitivo de los deudores y, al mismo tiempo, erosiona el valor real de la cartera. El código parte del índice general (serie SP1) y lo convierte a variación anual; la fuente del índice es el Instituto Nacional de Estadística y Geografía (Instituto Nacional de Estadística y Geografía, s. f.-b).
+
+El tipo de cambio FIX (clave SF43718) expresa cuántos pesos cuesta un dólar. Puede afectar a instituciones con pasivos en moneda extranjera, pues una depreciación del peso encarece esas obligaciones. El estudio no mide la exposición cambiaria de cada SOFIPO, por lo que el efecto del tipo de cambio sobre la morosidad sólo puede interpretarse como asociación agregada.
+
+El Indicador Global de la Actividad Económica (IGAE) es el índice mensual que mide el nivel de actividad económica del país, en términos generales, el equivalente mensual del producto interno bruto. Su tendencia y sus ciclos describen la capacidad de pago de los hogares y de las pequeñas empresas. La serie empleada corresponde a la clave SR17692, con base 2018, serie original y total. El indicador lo elabora el Instituto Nacional de Estadística y Geografía (Instituto Nacional de Estadística y Geografía, s. f.-a) y se consulta a través del Sistema de Información Económica de Banco de México.
+
+\subsection{Dos versiones de las series macroeconómicas}
+El código tuvo dos formas de obtener las variables macroeconómicas. Distinguirlas es indispensable para interpretar los resultados.
+
+La versión oficial es la que aparece en el código actual, en la función que descarga las series. Esta función realiza las siguientes operaciones. Primero calcula una fecha de inicio doce meses anterior al primer periodo de los datos, para poder calcular la variación anual de la inflación. Después consulta la API REST del Sistema de Información Económica de Banco de México con las cinco claves de serie y con un encabezado de autenticación que contiene el token. Cada serie llega con su propia frecuencia y se convierte a frecuencia mensual con un promedio de los valores del mes, mediante la regla de remuestreo al inicio de cada mes. Los meses sin dato se completan propagando el último valor disponible. Después se calcula la variación anual de la inflación con una diferencia porcentual de doce meses y se recorta la serie al periodo de interés. Si al final quedan valores faltantes, la función lanza un error y el pipeline se detiene. El token se lee de una variable de entorno llamada BANXICO\_TOKEN o, si esta no existe, de un archivo local llamado api.txt; el código no contiene el valor del token. Esta es la versión con la que se obtuvieron los resultados, las figuras y las métricas reportados en los Capítulos 5 a 8.
+
+La versión sintética es una versión anterior del script, que se usó en una ejecución previa cuyos resultados se descartaron y no se reportan en esta tesis. En ella las series no se descargaban. Se generaban con un generador de números pseudoaleatorios con semilla 42, de modo que cualquier lector obtiene exactamente las mismas series. Las fórmulas son las siguientes. La TIIE 28 se generó como una recta que va de 3.0 a 11.5, a la que se sumó ruido normal con desviación estándar de 0.25 y que luego se recortó al intervalo entre 3 y 12. La inflación se generó como una recta de 2.5 a 8.7, con ruido normal de desviación 0.3 y recorte al intervalo entre 0 y 10. El tipo de cambio se generó como una recta de 15.5 a 20.5, con ruido normal de desviación 0.6 y recorte al intervalo entre 14 y 22. Los Cetes a 28 días se definieron como la TIIE 28 menos 0.4 unidades. El IGAE se generó como 100 más la suma acumulada de ruido normal con media 0.08 y desviación 0.35.
+
+Las consecuencias de usar la versión sintética explican por qué sus resultados se descartaron. Primero, las series no reflejan la evolución real de las tasas, la inflación, el tipo de cambio ni la actividad económica de México, por lo que cualquier importancia asignada a estas variables describe series construidas artificialmente. Segundo, los Cetes eran exactamente la TIIE menos una constante, por lo que su correlación era perfecta y el modelo no podía distinguir sus efectos. Tercero, las series de tasa, inflación y tipo de cambio eran tendencias lineales que funcionan como un reloj, de modo que cualquier efecto atribuido a ellas podía ser un efecto del paso del tiempo. Cuarto, el IGAE era una caminata aleatoria con deriva, sin ciclos económicos reales. La versión sintética sirvió para verificar que el pipeline funcionaba de principio a fin, pero no permitía conclusiones económicas. Con las series oficiales los Cetes ya no son una función exacta de la TIIE, aunque ambas son tasas de corto plazo fuertemente relacionadas, por lo que la contribución individual de cada una debe interpretarse con cautela.
+
+La unión de las variables macroeconómicas con las observaciones institucionales se hace por periodo mediante una unión por la izquierda, que se explica en la sección de preparación de datos. Como las series se llevan a frecuencia mensual con fecha de inicio de mes, la unión solo coincide con los periodos del boletín cuando estos corresponden al primer día del mes. % VERIFICAR: el código no revisa faltantes en las columnas macro después de la unión; debe confirmarse que no los hay.
 
 \section{Variables y Operacionalización}
 
-La selección de variables responde a dos criterios principales: relevancia teórica según el marco de riesgo crediticio de Basilea y disponibilidad de datos en los boletines trimestrales de la CNBV. Las variables se agrupan en tres categorías: \textit{targets} (variables a predecir), \textit{variables contables internas} (características financieras de cada institución) y \textit{variables macroeconómicas} (contexto externo). La especificación incluye rezagos (para capturar dependencia temporal) y medias móviles (para suavizar fluctuaciones de corto plazo), reduciendo ruido mientras se preserva información predictiva.
+Operacionalizar una variable significa escribir la regla exacta con la que se calcula a partir de los datos. Una variable como ``riesgo'' no puede medirse directamente; debe traducirse en una cantidad concreta, por ejemplo el índice de morosidad, y en una fórmula que cualquier persona pueda aplicar al boletín. La selección de variables responde a dos criterios: relevancia teórica según el marco de riesgo crediticio de Basilea (Basel Committee on Banking Supervision, 2011) y disponibilidad de datos completos en los boletines trimestrales de la CNBV (Comisión Nacional Bancaria y de Valores, s. f.).
+
+Las variables se agrupan en tres categorías. Los objetivos son las cantidades que el modelo intenta predecir. Las variables contables internas son las características financieras de cada institución en el trimestre actual y en trimestres anteriores. Las variables macroeconómicas describen el contexto externo. La especificación incluye rezagos, que son valores de trimestres anteriores, para capturar la dependencia temporal, y medias móviles, que son promedios de los últimos trimestres, para suavizar fluctuaciones de corto plazo. Ambas herramientas reducen el ruido, pero también introducen una dependencia del pasado que debe respetarse al separar entrenamiento y prueba, como se explica más adelante.
 
 \begin{table}[H]
 \centering
@@ -28,23 +184,82 @@ La selección de variables responde a dos criterios principales: relevancia teó
 \toprule
 \textbf{Variable} & \textbf{Tipo} & \textbf{Definición} & \textbf{Fuente} & \textbf{Función} \\
 \midrule
-IMOR$_{t+1}$ & Continua & Cartera vencida / Cartera total, trimestre siguiente & CNBV & Target (regresión) \\
+IMOR$_{t+1}$ & Continua & Cartera vencida entre cartera total, trimestre siguiente (variable IMOR\_futuro y target\_IMOR) & CNBV & Target (regresión) \\
 Default$_{t+1}$ & Binaria & $\mathbb{I}(\text{IMOR}_{t+1}>10\%)$ & CNBV & Target (clasificación) \\
-IMOR$_{t}$, IMOR\_lag1--3 & Continua & Valor actual y rezagos de orden 1--3 del IMOR & CNBV & Predictor \\
-IMOR\_ma3, IMOR\_ma6 & Continua & Media móvil de 3 y 6 trimestres del IMOR & CNBV & Predictor \\
-NICAP$_t$ & Continua & Capital neto / requerimientos de capital & CNBV & Predictor \\
-ROA$_t$ & Continua & Resultado neto / activo total & CNBV & Predictor \\
-Ratio\_Cartera$_t$ & Continua & Cartera vigente / activo total & CNBV & Predictor \\
-TIIE\_28$_t$ & Continua & Tasa interbancaria de equilibrio a 28 días & Banxico (sintética en esta réplica) & Predictor macro \\
-Inflación$_t$ & Continua & Variación del INPC & Banxico (sintética) & Predictor macro \\
-IGAE$_t$ & Continua & Índice de actividad económica & Banxico (sintética) & Predictor macro \\
-USD/MXN$_t$ & Continua & Tipo de cambio FIX & Banxico (sintética) & Predictor macro \\
+IMOR$_{t}$, IMOR\_lag1--3 & Continua & Valor actual y rezagos de orden 1 a 3 del IMOR & CNBV & Predictor \\
+IMOR\_ma3, IMOR\_ma6 & Continua & Media móvil de 3 y 6 trimestres del IMOR, con el trimestre actual & CNBV & Predictor \\
+NICAP$_t$ & Continua & Capital neto como porcentaje de los requerimientos de capital & CNBV & Predictor \\
+ROA$_t$ & Continua & Resultado neto entre activo total, sin anualizar & CNBV & Predictor \\
+Ratio\_Cartera$_t$ & Continua & Cartera vigente entre activo total & CNBV & Predictor \\
+Tasa implícita$_t$, Gastos de administración$_t$, Cartera vigente$_t$ & Continua & Partidas del boletín usadas como predictores en la regresión & CNBV & Predictor \\
+TIIE\_28$_t$ & Continua & Tasa interbancaria de equilibrio a 28 días & Banxico (SIE) & Predictor macro \\
+Inflación$_t$ & Continua & Variación anual del INPC & Banxico e INEGI (SIE) & Predictor macro \\
+IGAE$_t$ & Continua & Índice de actividad económica & Banxico e INEGI (SIE) & Predictor macro \\
+USD/MXN$_t$ & Continua & Tipo de cambio FIX & Banxico (SIE) & Predictor macro \\
+Cetes\_28$_t$ & Continua & Rendimiento de Cetes a 28 días & Banxico (SIE) & Predictor macro \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
+En la Tabla \ref{tab:variables} el subíndice $t$ indica el trimestre de observación y $t+1$ el trimestre siguiente. La diferencia entre ambos es la que da sentido a la predicción: el modelo sólo puede usar información disponible en $t$ para anticipar lo que ocurrirá en $t+1$. Esa regla se cumple en todo el pipeline, con una excepción documentada en la imputación de valores faltantes.
+
 \section{Preparación de Datos: ETL}
-El proceso de extracción, transformación y carga (ETL) se implementó en dos capas. La \textit{capa de limpieza} utiliza consultas SQL vectorizadas directamente sobre el archivo de datos, normalizando valores faltantes codificados como \texttt{'n.a.'}, \texttt{'n.d.'} o \texttt{'-'} mediante operaciones de validación de tipo e imputación de valores nulos mediante la media histórica de la propia institución. La \textit{capa de ingeniería de características} calcula, de forma vectorizada y particionada por institución, los rezagos temporales, medias móviles y ratios financieros descritos en la Tabla \ref{tab:variables}. El énfasis en procesamiento vectorizado garantiza eficiencia computacional y reproducibilidad del pipeline en diferentes escalas de datos. El Listado \ref{lst:limpieza} muestra el fragmento correspondiente a la limpieza e imputación.
+
+\subsection{Qué es un proceso ETL y por qué se divide en capas}
+ETL son las siglas de extracción, transformación y carga (en inglés, extract, transform, load). Es el proceso que toma datos en su forma original, los limpia, los reorganiza y los deja listos para el análisis. En este estudio el proceso se divide en dos capas. La primera, la capa de limpieza, convierte los textos del boletín en números y resuelve los valores faltantes. La segunda, la capa de ingeniería de variables, calcula rezagos, medias móviles, ratios, objetivos y uniones con las series macroeconómicas. La separación permite revisar cada capa por separado: si un número parece extraño, se puede comprobar primero si la limpieza lo produjo y después si el cálculo lo amplificó.
+
+Una dificultad práctica del boletín es que los valores no siempre son números. Algunas celdas contienen el texto ``n.a.'' (no aplica), ``n.d.'' (no disponible), un guion o nada. Un programa que intente sumar o comparar esos textos fallará o producirá resultados erróneos. Por eso la limpieza convierte esos casos en un valor faltante, un dato que existe en la tabla pero cuyo valor es desconocido, y después decide qué hacer con cada faltante.
+
+\subsection{Herramientas: SQL, tablas temporales y funciones de ventana}
+SQL, en inglés Structured Query Language, es el lenguaje estándar para consultar tablas. Una consulta describe qué filas y columnas se quieren obtener y cómo deben transformarse. Por ejemplo, la siguiente consulta selecciona el nombre de cada institución y una columna nueva que vale 1 si el índice de morosidad supera 10 y 0 en caso contrario.
+
+\begin{lstlisting}[language=SQL, caption={Ejemplo mínimo de consulta SQL con una expresión CASE}, label={lst:met_sql_case}]
+SELECT Nombre, IMOR,
+       CASE WHEN IMOR > 10 THEN 1 ELSE 0 END AS Default_ejemplo
+FROM tabla_ejemplo
+\end{lstlisting}
+
+La expresión CASE funciona como una cadena de decisiones: si se cumple la condición, devuelve un valor; si no, devuelve el siguiente o el valor por defecto. COALESCE es otra función habitual. Recibe una lista de valores y devuelve el primero que no sea faltante. Así, COALESCE(IMOR, 0) devuelve el IMOR si existe y 0 si el IMOR es faltante.
+
+Una tabla temporal es una tabla que existe sólo durante la sesión de trabajo. Permite guardar un resultado intermedio y consultarlo después, sin escribir un archivo nuevo en el disco. En el pipeline, la tabla cleaned\_temp contiene los valores ya convertidos a número y se consulta en el siguiente paso.
+
+Una función de ventana calcula un valor para cada fila usando un conjunto de filas relacionadas, sin colapsarlas en una sola. La cláusula OVER define ese conjunto, y PARTITION BY indica cómo se divide la tabla en grupos. El siguiente ejemplo calcula, para cada fila, el promedio del IMOR de su misma institución.
+
+\begin{lstlisting}[language=SQL, caption={Ejemplo mínimo de función de ventana por institución}, label={lst:met_sql_ventana}]
+SELECT Nombre, Periodo, IMOR,
+       AVG(IMOR) OVER (PARTITION BY Nombre) AS promedio_institucion
+FROM tabla_ejemplo
+\end{lstlisting}
+
+Todas las filas de una misma institución reciben el mismo promedio, pero el número de filas no cambia. Esa propiedad es la que el pipeline aprovecha para imputar valores faltantes, y también la que introduce el problema de información futura que se discute más adelante.
+
+DuckDB es un motor de bases de datos embebido, es decir, que se ejecuta dentro del mismo programa sin servidor aparte. Puede leer directamente un archivo Parquet mediante una consulta SQL (Raasveldt y Mühleisen, 2019). En el pipeline se usa para la capa de limpieza.
+
+\subsection{Paso 1: limpieza de textos y conversión a números}
+La limpieza se ejecuta con DuckDB sobre el archivo Parquet. Para cada columna numérica, el código aplica una cadena de operaciones que se lee de adentro hacia afuera. Primero, CAST convierte el valor a texto y TRIM elimina los espacios al inicio y al final. Después, NULLIF sustituye por un valor faltante cualquier texto igual a ``n.a.'', ``n.d.'', ``-'' o una cadena vacía; NULLIF(x, y) devuelve un faltante si x es igual a y, y x en caso contrario. Por último, TRY\_CAST intenta convertir el texto a un número de doble precisión; si la conversión falla, devuelve un faltante en lugar de detener el proceso. El resultado se guarda en una tabla temporal llamada cleaned\_temp. El listado siguiente reproduce esa lógica con los nombres de columna abreviados.
+
+\begin{lstlisting}[language=Python, caption={Conversión de columnas del boletín a números con DuckDB (lista abreviada)}, label={lst:met_limpieza_sql}]
+import duckdb
+con = duckdb.connect()
+columnas_numericas = ["Activo Total (miles de pesos)", "Cartera Vigente (miles de pesos)",
+    "Cartera Vencida (miles de pesos)", "IMOR 1/ (%)", "NICAP", "Tasa implicita2/",
+    "Gastos de administracion y promocion", "Resultado Neto", "MARGEN FINANCIERO"]
+select_parts = ["TRIM(CAST(Nombre AS VARCHAR)) AS Nombre",
+                "CAST(Periodo AS TIMESTAMP) AS Periodo",
+                "TRIM(CAST(Estatus AS VARCHAR)) AS Estatus"]
+for col in columnas_numericas:
+    clean_expr = f"""TRY_CAST(NULLIF(NULLIF(NULLIF(NULLIF(TRIM(CAST("{col}" AS VARCHAR)),'n.a.'),'n.d.'),'-'),'') AS DOUBLE)"""
+    select_parts.append(f'{clean_expr} AS "{col}_raw"')
+query_cleaned = f"SELECT {', '.join(select_parts)} FROM 'sofipo_base_completa.parquet'"
+con.execute(f"CREATE TEMPORARY TABLE cleaned_temp AS {query_cleaned}")
+\end{lstlisting}
+
+Un ejemplo numérico aclara la cadena. Supóngase que tres celdas contienen, respectivamente, el texto `` 12.5 '' con espacios alrededor, el texto ``n.d.'' y el texto ``-''. Tras TRIM, la primera queda como ``12.5''. NULLIF no la modifica. TRY\_CAST la convierte en el número 12.5. Las otras dos se convierten primero en faltantes y TRY\_CAST devuelve faltante también para ellas. El resultado es una columna numérica en la que las celdas no informativas quedan marcadas como faltantes, sin que el proceso se interrumpa.
+
+Esta capa no tiene una decisión estadística; es una conversión de formato. Su consecuencia para la validez es que cualquier valor del boletín que no se pudo convertir se trata como faltante, y que los faltantes se imputan en el paso siguiente. Por ello conviene registrar cuántos faltantes se generaron en esta capa; el código no lo reporta. % VERIFICAR: el número de celdas convertidas en faltantes no se reporta en el código y debe calcularse para la tesis.
+
+\subsection{Paso 2: imputación por institución y riesgo de fuga de información}
+Un valor faltante en el panel debe resolverse de alguna manera antes de modelar, porque casi todos los modelos no aceptan celdas vacías. Las opciones son eliminar la fila, rellenar con un valor fijo o rellenar con un valor estimado a partir de los datos. El código usa la última opción de forma sencilla: rellena cada faltante con el promedio de la misma institución. La función COALESCE devuelve el valor original si existe y, si no existe, el promedio de la institución calculado con una función de ventana. El listado siguiente es el fragmento real del pipeline.
 
 \begin{lstlisting}[language=Python, caption={Limpieza e imputación con DuckDB (fragmento real del pipeline ejecutado)}, label={lst:limpieza}]
 query_imputed = f"""
@@ -57,27 +272,583 @@ query_imputed = f"""
 df_cleaned = con.execute(query_imputed).pl()
 \end{lstlisting}
 
-\section{Modelos Entrenados y Validación Temporal}
-Se entrenaron y compararon dos familias de modelos: \textit{modelos univariados clásicos} (ARIMA y SARIMA, ajustados independientemente para cada institución mediante pronóstico rodante) que sirven como referencia de la econometría tradicional, y \textit{modelos panel multivariados} (XGBoost, LightGBM y Random Forest) que aprovechan la información conjunta del panel para generalizar a instituciones de historia corta. Para la tarea de clasificación de insolvencia crítica, se entrenó un ensamble Stacking (combinación de Random Forest, XGBoost y LightGBM con un meta-regresor logístico) precedido de remuestreo SMOTE-ENN aplicado \textbf{únicamente sobre el conjunto de entrenamiento}, para evitar contaminar el conjunto de prueba con observaciones sintéticas. La búsqueda de hiperparámetros se realizó mediante búsqueda en grilla sobre validación cruzada temporal, garantizando que cada pliegue respeta el orden cronológico.
+El fragmento muestra el mismo patrón que el código real para todas las columnas numéricas, que se generan en un bucle. Hay dos detalles que deben entenderse con precisión. El primero es el filtro. La cláusula WHERE se aplica antes de calcular las funciones de ventana, así que el promedio de cada institución se calcula sólo con las filas cuyo estatus contiene la expresión ``En operación''. Las filas con otro estatus no contribuyen al promedio ni se devuelven. El segundo detalle es la función AVG, que ignora los valores faltantes al promediar; por eso el promedio es un promedio de los valores disponibles de la institución.
 
-Es metodológicamente inadmisible en series temporales realizar una partición aleatoria train/test, pues ello introduciría información futura (\textit{lookahead bias}) en el entrenamiento, haciendo que el modelo optimice sobre información que no estaría disponible en el momento de predicción. Por ello, la partición train/test se realiza de forma \textit{cronológica}, reservando el 80\% inicial de las observaciones (ordenadas por período) para entrenamiento y el 20\% final para prueba. La selección de hiperparámetros se valida mediante validación cruzada temporal con cinco particiones, donde cada pliegue respeta el orden cronológico: se entrena sobre datos pasados y se valida sobre un bloque futuro inmediato, garantizando que ninguna información futura contamina el conjunto de entrenamiento.
+Un ejemplo pequeño muestra el problema. Supóngase que una institución tiene índices de morosidad de 4.0 en 2015, faltante en 2016, 5.0 en 2017 y 6.0 en 2018, todos con estatus de operación. El promedio de los valores disponibles es (4.0 + 5.0 + 6.0) / 3 = 5.0, y el faltante de 2016 se rellena con 5.0. Pero para llenar el hueco de 2016 se usaron datos de 2017 y 2018, que en un momento real de 2016 todavía no existían. Esto es una fuga de información (Kaufman et al., 2012): el modelo recibe, como si fuera un dato del pasado, una estimación construida con información del futuro.
+
+Las consecuencias para la validez son concretas. Si la proporción de faltantes es pequeña, el sesgo también es pequeño, pero no es nulo: la imputación puede hacer que el error del modelo parezca menor de lo que sería en la práctica, porque en el conjunto de prueba algunos valores ya contienen información de las observaciones posteriores. Si la proporción de faltantes es grande en una institución, su historia completa queda determinada en buena parte por su promedio, y el modelo aprende un patrón artificial. Las alternativas habituales son imputar sólo con información pasada, por ejemplo con el último valor observado, o construir la imputación dentro de cada pliegue de entrenamiento. Esa corrección no se aplica en la ejecución reportada y se contempla en la sección de amenazas a la validez. Véase también la sección \ref{sec:imputacion} del marco teórico.
+
+\subsection{Paso 3: eliminación de faltantes en variables críticas}
+Después de la imputación, el código elimina las filas que siguen teniendo faltantes en tres variables críticas: el índice de morosidad, el activo total y la cartera vigente. Un faltante sólo sobrevive a la imputación si toda la historia de la institución carece de ese valor, porque en ese caso el promedio tampoco existe. Eliminar esas filas evita que el resto del pipeline trabaje con celdas vacías en variables indispensables.
+
+\begin{lstlisting}[language=Python, caption={Filtro de filas con faltantes en variables críticas}, label={lst:met_filtro_nulos}]
+df_cleaned = df_cleaned.filter(
+    pl.col("IMOR 1/ (%)").is_not_null()
+    & pl.col("Activo Total (miles de pesos)").is_not_null()
+    & pl.col("Cartera Vigente (miles de pesos)").is_not_null()
+)
+\end{lstlisting}
+
+Este filtro es sencillo, pero tiene una consecuencia de muestreo: las instituciones que nunca reportan la cartera vigente o el activo quedan fuera del panel sin que el estudio pueda saber si eso es aleatorio o no. Si las instituciones con más problemas de reporte son también las más morosas, la muestra final subestima el riesgo. Esta selección se discute en la sección de amenazas a la validez.
+
+\subsection{Paso 4: ordenación, rezagos y medias móviles}
+Un rezago es el valor de una variable en un periodo anterior. Si el índice de morosidad de una institución en el trimestre $t$ es $y_t$, su rezago de orden 1 es $y_{t-1}$, el valor del trimestre anterior; su rezago de orden 2 es $y_{t-2}$, y así sucesivamente. Los rezagos permiten al modelo ver la historia reciente de la institución. Una media móvil de 3 trimestres es el promedio de los últimos tres valores, incluido el actual. Suaviza la serie y reduce el efecto de un trimestre atípico.
+
+Antes de calcular rezagos, el código ordena la tabla por institución y periodo. Este paso es indispensable: un rezago sólo tiene sentido si las filas están en el orden cronológico de cada institución. Después, para cada variable, el código calcula el valor desplazado dentro de cada institución. Las ecuaciones son las siguientes.
+
+\begin{equation}
+\label{eq:met_rezago}
+\text{IMOR\_lag}k_{i,t} = \text{IMOR}_{i,t-k}, \qquad k \in \{1,2,3\}
+\end{equation}
+
+\begin{equation}
+\label{eq:met_ma}
+\text{IMOR\_ma}m_{i,t} = \frac{1}{\min(m,\, n_{i,t})}\sum_{k=0}^{\min(m,\, n_{i,t})-1} \text{IMOR}_{i,t-k}, \qquad m \in \{3,6\}
+\end{equation}
+
+En la ecuación \eqref{eq:met_ma}, $n_{i,t}$ es el número de observaciones disponibles de la institución $i$ hasta el trimestre $t$. La expresión min(m, n) permite calcular el promedio cuando todavía no hay m observaciones, lo que corresponde al parámetro min\_periods=1 del código. El subíndice $i$ identifica la institución.
+
+El código aplica estas operaciones con las siguientes instrucciones.
+
+\begin{lstlisting}[language=Python, caption={Rezagos y medias móviles por institución con Polars}, label={lst:met_rezagos}]
+df_pl = df_pl.sort(["Nombre", "Periodo"])
+df_pl = df_pl.with_columns([
+    pl.col("IMOR 1/ (%)").shift(1).over("Nombre").alias("IMOR_lag1"),
+    pl.col("IMOR 1/ (%)").shift(2).over("Nombre").alias("IMOR_lag2"),
+    pl.col("IMOR 1/ (%)").shift(3).over("Nombre").alias("IMOR_lag3"),
+    pl.col("IMOR 1/ (%)").rolling_mean(window_size=3, min_periods=1).over("Nombre").alias("IMOR_ma3"),
+    pl.col("IMOR 1/ (%)").rolling_mean(window_size=6, min_periods=1).over("Nombre").alias("IMOR_ma6"),
+])
+\end{lstlisting}
+
+La cláusula over("Nombre") es la que impide que un rezago cruce de una institución a otra. Sin ella, la primera fila de una institución recibiría como rezago el último valor de la institución anterior en el orden de la tabla, y el modelo aprendería una relación falsa. La instrucción shift desplaza la columna hacia abajo; rolling\_mean calcula el promedio de la ventana.
+
+La Tabla \ref{tab:met_ejemplo_rezagos} muestra el resultado con un ejemplo de 8 trimestres de una institución ficticia. Los valores son ilustrativos y no corresponden a ninguna SOFIPO real.
+
+\begin{table}[H]
+\centering
+\caption{Ejemplo numérico de rezagos y media móvil de 3 trimestres (valores ilustrativos)}
+\label{tab:met_ejemplo_rezagos}
+\small
+\begin{tabularx}{\textwidth}{Xrrrrr}
+\toprule
+\textbf{Trimestre} & \textbf{IMOR} & \textbf{IMOR\_lag1} & \textbf{IMOR\_lag2} & \textbf{IMOR\_lag3} & \textbf{IMOR\_ma3} \\
+\midrule
+$t_0$ & 5.0 & --- & --- & --- & 5.00 \\
+$t_1$ & 5.4 & 5.0 & --- & --- & 5.20 \\
+$t_2$ & 5.1 & 5.4 & 5.0 & --- & 5.17 \\
+$t_3$ & 6.0 & 5.1 & 5.4 & 5.0 & 5.50 \\
+$t_4$ & 6.2 & 6.0 & 5.1 & 5.4 & 5.77 \\
+$t_5$ & 5.9 & 6.2 & 6.0 & 5.1 & 6.03 \\
+$t_6$ & 6.5 & 5.9 & 6.2 & 6.0 & 6.20 \\
+$t_7$ & 6.8 & 6.5 & 5.9 & 6.2 & 6.40 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+En la Tabla \ref{tab:met_ejemplo_rezagos} se observa que el rezago de orden 3 sólo existe a partir de $t_3$. Por ello, en el código, las primeras tres filas de cada institución se eliminan al exigir que los tres rezagos y las dos medias móviles no sean faltantes. La media móvil de 3 de $t_1$ usa 5.0 y 5.4, es decir, sólo dos observaciones, porque la regla min\_periods=1 la permite; esa fila, sin embargo, también se elimina por el rezago de orden 3. La media móvil de 6 trimestres exige más historia, y en la práctica define cuántas filas quedan disponibles. Cabe notar que la media móvil incluye el trimestre actual; esto no introduce fuga, porque el valor de $t$ es conocido en el momento en que se quiere predecir $t+1$.
+
+\subsection{Paso 5: ratios financieros}
+Un ratio compara dos cantidades para eliminar el efecto del tamaño. Una institución grande con una pérdida de 100 mil pesos puede estar en mejor situación que una pequeña con la misma pérdida, si la primera tiene activos mucho mayores. Dividir por el activo total permite comparar instituciones de tamaño distinto.
+
+El código calcula dos ratios. El primero mide qué proporción del activo está en cartera vigente:
+
+\begin{equation}
+\label{eq:met_ratio}
+\text{ratio\_cartera\_activo}_{i,t} = \frac{\text{CarteraVigente}_{i,t}}{\text{ActivoTotal}_{i,t}}
+\end{equation}
+
+El segundo es el rendimiento sobre activos, en inglés return on assets, ROA:
+
+\begin{equation}
+\label{eq:met_roa}
+\text{ROA}_{i,t} = \frac{\text{ResultadoNeto}_{i,t}}{\text{ActivoTotal}_{i,t}}
+\end{equation}
+
+Un ejemplo numérico aclara ambas fórmulas. Si una institución tiene activo total de 1000 y cartera vigente de 800, su ratio de cartera sobre activo es 800 / 1000 = 0.80. Si además reportó un resultado neto de 12 en el trimestre, su ROA es 12 / 1000 = 0.012, es decir, 1.2 por ciento del activo. Este ROA es del trimestre y no está anualizado. Si se quisiera compararlo con un ROA anual de la literatura, habría que multiplicarlo por cuatro, pero el modelo no lo hace, y el valor sólo puede compararse con otros trimestres de la misma base.
+
+El código tiene una protección antes de dividir. La instrucción when-then-otherwise convierte en faltante los activos iguales a cero, para evitar una división entre cero, que produciría un valor infinito y rompería los cálculos posteriores.
+
+\begin{lstlisting}[language=Python, caption={Ratios financieros con protección contra división entre cero}, label={lst:met_ratios}]
+df_pl = df_pl.with_columns([
+    pl.when(pl.col("Activo Total (miles de pesos)") == 0).then(None)
+    .otherwise(pl.col("Activo Total (miles de pesos)")).alias("activo_denominador")
+])
+df_pl = df_pl.with_columns([
+    (pl.col("Cartera Vigente (miles de pesos)") / pl.col("activo_denominador")).alias("ratio_cartera_activo"),
+    (pl.col("Resultado Neto") / pl.col("activo_denominador")).alias("ROA"),
+])
+df_pl = df_pl.drop_nulls(subset=["IMOR_lag1", "IMOR_lag2", "IMOR_lag3", "IMOR_ma3", "IMOR_ma6",
+                                 "ratio_cartera_activo", "ROA"])
+\end{lstlisting}
+
+La última instrucción elimina las filas sin rezagos o sin ratios. Como los rezagos de orden 3 dependen de tres trimestres anteriores, esta eliminación quita las tres primeras observaciones de cada institución. Esa pérdida es el precio de no inventar historia para los primeros trimestres, y es la razón por la que el número de filas cae de forma notable entre el boletín y el panel.
+
+\subsection{Paso 6: filtro de historia mínima y paso a pandas}
+El código cuenta cuántas filas quedan por institución después del paso anterior y conserva sólo las que tienen al menos seis filas. Esta regla tiene dos propósitos. Primero, garantiza que las medias móviles de 6 trimestres y los rezagos tengan una base mínima de datos. Segundo, reduce el ruido de instituciones con muy pocas observaciones, cuyo índice de morosidad puede cambiar mucho por un solo trimestre.
+
+\begin{lstlisting}[language=Python, caption={Filtro de instituciones con al menos seis observaciones y paso a pandas}, label={lst:met_minimo6}]
+counts = df_pl["Nombre"].value_counts()
+valid_names = counts.filter(pl.col("count") >= 6)["Nombre"].to_list()
+df_pl_valid = df_pl.filter(pl.col("Nombre").is_in(valid_names))
+df_pd = df_pl_valid.to_pandas()
+\end{lstlisting}
+
+Las seis filas se cuentan después de eliminar las tres primeras de cada institución. Por eso, en ausencia de huecos, una institución necesita al menos nueve trimestres de historia en el boletín para entrar al panel. El umbral se aplica antes de unir las variables macroeconómicas y antes de crear los objetivos, por lo que la regla de historia mínima no depende de esas etapas posteriores. Los objetivos eliminan después una fila adicional por el rezago de la variable objetivo y otra por el adelanto. Una institución con seis filas válidas aporta, en el panel final, cuatro observaciones utilizables. % VERIFICAR: la cuenta de cuatro observaciones por institución con seis filas es un cálculo derivado del código y debe confirmarse con el panel real.
+
+Después del filtro, el código convierte la tabla de Polars en una tabla de pandas. Polars y pandas son dos bibliotecas de tablas. Polars es más rápida para operaciones por grupo, pero la mayoría de los modelos de aprendizaje automático esperan una tabla de pandas o de NumPy, por eso se hace el cambio en esta etapa.
+
+\subsection{Paso 7: unión con las variables macroeconómicas e identificador numérico}
+Una unión entre tablas combina dos tablas usando una clave común. Aquí la clave es el periodo. Una unión por la izquierda conserva todas las filas de la tabla izquierda, que son las observaciones institucionales, y añade a cada una las columnas de la tabla derecha que coincidan por periodo. Si un periodo no tiene valor macroeconómico, la columna queda con un faltante. Por ejemplo, si la tabla institucional tiene las filas (SOFIPO A, 2016-01) y (SOFIPO B, 2016-01), y la tabla macro tiene un valor de TIIE para 2016-01, ambas filas reciben ese mismo valor de TIIE.
+
+\begin{lstlisting}[language=Python, caption={Unión por periodo y codificación numérica de las instituciones}, label={lst:met_union}]
+df_macro = obtener_datos_macro(df_pd["Periodo"].min(), df_pd["Periodo"].max())
+df_unificado = pd.merge(df_pd, df_macro, left_on="Periodo", right_index=True, how="left")
+df_unificado["Nombre_ID"] = LabelEncoder().fit_transform(df_unificado["Nombre"])
+\end{lstlisting}
+
+LabelEncoder asigna a cada nombre de institución un número entero, del 0 al número de instituciones menos uno, siguiendo el orden alfabético. Este número sirve como identificador para los modelos de árboles, que no aceptan texto. Hay que advertir que el número no tiene significado económico: la institución con identificador 5 no es ``cinco veces'' otra. Un árbol puede dividir sobre ese número y aprender la identidad de una institución, lo que es una forma de memorización. Por eso el identificador se usa sólo en los modelos multiobjetivo, y el resultado debe interpretarse con cautela.
+
+La función obtener\_datos\_macro se describe en la sección de conjunto de datos; con su versión oficial se obtuvieron los resultados reportados.
+
+\subsection{Paso 8: objetivos por adelanto}
+El objetivo de predicción es el valor futuro. Para cada institución se crean tres tipos de columnas. Las columnas lag\_ contienen el valor del trimestre anterior, con un desplazamiento de un periodo hacia abajo, como en el paso de rezagos. Las columnas target\_ contienen el valor del trimestre siguiente, con un desplazamiento hacia arriba, de modo que cada fila recibe el valor que la institución reportará en el periodo que sigue. La columna IMOR\_futuro es el adelanto del índice de morosidad.
+
+\begin{lstlisting}[language=Python, caption={Creación de rezagos y objetivos futuros dentro de cada institución (nombres abreviados)}, label={lst:met_objetivos}]
+variables_financieras = ["IMOR 1/ (%)", "NICAP", "Resultado Neto"]
+for var in variables_financieras:
+    df_unificado[f"lag_{var}"] = df_unificado.groupby("Nombre")[var].shift(1)
+    df_unificado[f"target_{var}"] = df_unificado.groupby("Nombre")[var].shift(-1)
+df_unificado["IMOR_futuro"] = df_unificado.groupby("Nombre")["IMOR 1/ (%)"].shift(-1)
+df_ml = df_unificado.dropna(subset=["IMOR_futuro", "target_IMOR 1/ (%)", "target_NICAP",
+                                    "target_Resultado Neto", "lag_IMOR 1/ (%)"])
+\end{lstlisting}
+
+En la ecuación siguiente, $y_{i,t}$ denota cualquiera de las variables financieras de la institución $i$ en el trimestre $t$. El objetivo es el valor del trimestre siguiente.
+
+\begin{equation}
+\label{eq:met_objetivo}
+\text{target}_{i,t} = y_{i,t+1}, \qquad \text{IMOR\_futuro}_{i,t} = \text{IMOR}_{i,t+1}
+\end{equation}
+
+Las filas sin objetivo se eliminan con dropna. Esto quita la última observación de cada institución, que no tiene trimestre siguiente, y la primera de cada institución en las columnas lag\_, que no tiene trimestre anterior. El filtro asegura que cada fila del panel final tenga un valor real para predecir y un valor real de contexto. Lo que el filtro no hace es verificar que el valor objetivo esté disponible en el momento en que se usaría el modelo: en la práctica, el boletín de un trimestre se publica con cierto rezago, y el modelo no tendría el valor de $t$ en el instante de predecir $t+1$. Esa limitación se discute en las amenazas a la validez.
+
+Un dato conviene tener presente al leer la regresión. El código usa el valor de IMOR\_futuro como objetivo, y también incluye en los predictores el IMOR actual y sus rezagos. Como el IMOR de un trimestre es el objetivo del trimestre anterior, el modelo aprende de una secuencia en la que cada observación es, a la vez, respuesta y predictor de otra fila. Esto es normal en series de tiempo, pero obliga a separar con cuidado el entrenamiento de la prueba, como se explica en la siguiente sección.
+
+\section{Modelos Entrenados y Validación Temporal}
+
+\subsection{Entrenar, validar y probar}
+Un modelo estadístico o de aprendizaje automático aprende una regla que relaciona los predictores con el objetivo. El proceso se parece al de un estudiante que estudia con ejercicios resueltos y después presenta un examen con preguntas que nunca vio. Los ejercicios resueltos son el conjunto de entrenamiento: el modelo ajusta sus parámetros para reproducir esas respuestas. El conjunto de validación sirve para comparar configuraciones distintas del mismo modelo, por ejemplo, para elegir cuántos árboles usar. El examen final es el conjunto de prueba: sólo se consulta una vez, para medir el desempeño que se reporta.
+
+La regla central es que el examen final no debe influir en la elección del modelo ni en la de sus hiperparámetros. Si se consulta muchas veces, el investigador termina escogiendo la configuración que mejor responde a ese conjunto en particular, y la medida resultante sobreestima la capacidad real del modelo. El pipeline no cumple plenamente esta regla en todos los casos, y las excepciones se señalan en las subsecciones siguientes y en las amenazas a la validez.
+
+\subsection{Partición por posición: qué hace el código}
+El código separa entrenamiento y prueba de dos maneras. En los modelos de regresión usa la función train\_test\_split de scikit-learn con 20 por ciento para prueba y la opción shuffle igual a falso. En los modelos multiobjetivo y en el clasificador, separa manualmente las filas en dos bloques, con los primeros 80 por ciento para entrenamiento y los siguientes 20 por ciento para prueba. Ambas formas tienen el mismo efecto: el orden de las filas decide qué observaciones van a cada conjunto.
+
+\begin{lstlisting}[language=Python, caption={Partición de datos por posición en la regresión y en los modelos multiobjetivo}, label={lst:met_particion}]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False, random_state=SEED)
+split = int(len(X) * 0.8)
+X_train, y_train = X[:split], y[:split]
+X_test, y_test = X[split:], y[split:]
+\end{lstlisting}
+
+La opción shuffle igual a falso significa que no se mezclan las filas antes de dividirlas; la parte de la izquierda de la tabla pasa a entrenamiento y la de la derecha a prueba. El valor random\_state no tiene efecto en este caso, porque no hay mezcla aleatoria que controlar. Lo que sí importa es el orden en que las filas llegan a la función. Ese orden no es el cronológico. En el panel, las filas se ordenaron primero por nombre de institución y después por periodo. Por lo tanto, el 20 por ciento final corresponde a las últimas instituciones en orden alfabético, y no a los trimestres más recientes.
+
+Para visualizar esta consecuencia, la Tabla \ref{tab:met_particion_ejemplo} muestra un ejemplo con cinco instituciones ficticias, cada una con cuatro trimestres de datos, es decir, 20 filas en total. Las instituciones aparecen en orden alfabético y, dentro de cada una, en orden de periodo.
+
+\begin{table}[H]
+\centering
+\caption{Ejemplo ficticio de partición por posición con 20 filas}
+\label{tab:met_particion_ejemplo}
+\small
+\begin{tabularx}{\textwidth}{Xrrrp{3.8cm}}
+\toprule
+\textbf{Institución} & \textbf{Filas} & \textbf{Filas de 2015} & \textbf{Filas de 2016} & \textbf{Asignación por posición} \\
+\midrule
+AMIGO & 4 & 2 & 2 & Entrenamiento (filas 1 a 4) \\
+BASE & 4 & 2 & 2 & Entrenamiento (filas 5 a 8) \\
+CRECE & 4 & 2 & 2 & Entrenamiento (filas 9 a 12) \\
+DINAMO & 4 & 2 & 2 & Entrenamiento (filas 13 a 16) \\
+ESFERA & 4 & 2 & 2 & Prueba (filas 17 a 20) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+En el ejemplo, el 80 por ciento de 20 filas es 16, así que las primeras 16 filas van a entrenamiento y las cuatro de ESFERA a prueba. La prueba contiene observaciones de 2015 y 2016, años que también aparecen en el entrenamiento, por lo que no es un conjunto de años futuros. Lo que el conjunto de prueba representa son las observaciones de la última institución alfabética. Con las cifras reales del panel, 1189 observaciones producen 951 filas de entrenamiento y 238 de prueba, según el cálculo de 80 por ciento redondeado hacia abajo y 20 por ciento restante. El punto de corte puede además caer dentro de la historia de una institución, de modo que una misma institución aparezca en ambos conjuntos. % VERIFICAR: la cifra de 951 y 238 es un cálculo derivado del tamaño del panel; debe confirmarse ejecutando el pipeline.
+
+Esta partición no es cronológica. El texto de versiones anteriores de este capítulo afirmaba que la partición reservaba el 80 por ciento inicial de los periodos para entrenamiento y el 20 por ciento final para prueba. Esa afirmación era incorrecta respecto del código: la división se hace por posición de las filas, no por fecha, y el orden de las filas es por institución. La consecuencia es que el resultado de la prueba no mide la capacidad de predecir el futuro de la muestra. Mide la capacidad de predecir la morosidad de un bloque de instituciones usando observaciones de todas las instituciones de la muestra, incluidas las del propio bloque. Las implicaciones se discuten en la sección \ref{sec:limitaciones_marco} del marco teórico y en las amenazas a la validez de este capítulo.
+
+\subsection{Validación cruzada de series de tiempo}
+La validación cruzada es una técnica para estimar el desempeño de un modelo sin gastar el conjunto de prueba. Consiste en dividir el entrenamiento en varios bloques, llamados pliegues, entrenar con unos y validar con el restante, y repetir el proceso con cada bloque como validación. El promedio de los resultados es una estimación más estable que una sola división.
+
+En series de tiempo, la validación cruzada común de bloques aleatorios es inadmisible, porque permitiría entrenar con observaciones posteriores a las de validación, lo que es una forma de fuga de información (Arlot y Celisse, 2010; Bergmeir et al., 2018). La validación cruzada temporal, que implementa TimeSeriesSplit, resuelve este problema de forma sencilla: los pliegues se construyen en orden de posición, de modo que el conjunto de validación siempre viene después del de entrenamiento dentro de la secuencia que recibe la función (Cerqueira et al., 2020). El ejemplo siguiente muestra la lógica con doce observaciones ordenadas y cinco pliegues.
+
+\begin{table}[H]
+\centering
+\caption{Pliegues de TimeSeriesSplit con 12 observaciones y 5 divisiones}
+\label{tab:met_tscv}
+\small
+\begin{tabularx}{\textwidth}{Xp{4.6cm}Xr}
+\toprule
+\textbf{Pliegue} & \textbf{Entrenamiento (posiciones)} & \textbf{Validación (posiciones)} & \textbf{Filas de entrenamiento} \\
+\midrule
+1 & 1 a 2 & 3 a 4 & 2 \\
+2 & 1 a 4 & 5 a 6 & 4 \\
+3 & 1 a 6 & 7 a 8 & 6 \\
+4 & 1 a 8 & 9 a 10 & 8 \\
+5 & 1 a 10 & 11 a 12 & 10 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+En la Tabla \ref{tab:met_tscv} el entrenamiento crece en cada pliegue y el bloque de validación se desplaza hacia adelante. La primera observación siempre entra al entrenamiento y nunca se valida con datos anteriores a ella. Este diseño es el que describe la literatura de validación en series de tiempo (Tashman, 2000).
+
+Sin embargo, en el pipeline la secuencia que recibe TimeSeriesSplit no es temporal para todo el panel. Las filas de entrenamiento están ordenadas por institución y después por periodo. Por eso cada pliegue de validación es un bloque de filas consecutivas, que casi siempre pertenece a una o dos instituciones, y no a un bloque de trimestres comunes para todas. La validación cruzada garantiza que el modelo no vea el futuro de la institución que valida si el bloque está en orden temporal dentro de esa institución, pero no garantiza que el conjunto de validación sea posterior en el calendario al conjunto de entrenamiento. Esta es una limitación de la búsqueda de hiperparámetros, y la sección \ref{sec:val_temporal} del marco teórico describe la validación temporal que esta implementación sólo aproxima.
+
+\subsection{Búsqueda en rejilla de hiperparámetros}
+Un hiperparámetro es una opción que el investigador fija antes de entrenar, como el número de árboles o la profundidad máxima de cada árbol. Los parámetros, en cambio, son los valores que el algoritmo aprende de los datos, como los umbrales de decisión de cada árbol. La búsqueda en rejilla prueba todas las combinaciones de una lista de valores para cada hiperparámetro y elige la que tiene mejor desempeño en validación cruzada (Bergstra y Bengio, 2012), tema que se desarrolla en la sección \ref{sec:optimizacion} del marco teórico. El código usa la clase GridSearchCV de scikit-learn (Pedregosa et al., 2011), con la siguiente rejilla.
+
+\begin{lstlisting}[language=Python, caption={Rejilla de hiperparámetros y validación cruzada temporal para XGBoost y LightGBM}, label={lst:met_rejilla}]
+param_grid = {"n_estimators": [100, 200], "max_depth": [3, 5, 7], "learning_rate": [0.01, 0.05, 0.1]}
+tscv = TimeSeriesSplit(n_splits=5)
+grid_xgb = GridSearchCV(xgb.XGBRegressor(objective="reg:squarederror", random_state=SEED),
+                         param_grid, cv=tscv, scoring="neg_root_mean_squared_error", n_jobs=-1)
+grid_xgb.fit(X_train, y_train)
+best_xgb = grid_xgb.best_estimator_
+\end{lstlisting}
+
+La rejilla tiene dos valores para el número de árboles, tres para la profundidad y tres para la tasa de aprendizaje. El producto es 2 por 3 por 3, es decir, 18 combinaciones. Cada combinación se evalúa en los cinco pliegues, lo que suma 90 ajustes por modelo. Además, por defecto GridSearchCV reajusta el mejor modelo con todo el entrenamiento, lo que agrega un ajuste final. El mismo procedimiento se aplica a LightGBM con su propio objeto de búsqueda. Ambos modelos se evalúan con la raíz del error cuadrático medio, pero scikit-learn maximiza el criterio, por eso el código usa el valor negativo del RMSE: el mejor modelo es el que tiene el valor negativo más cercano a cero.
+
+Los valores de la rejilla se eligieron por dos razones. La primera es que representan rangos habituales en la práctica del gradient boosting: pocos árboles o muchos, árboles poco profundos o intermedios, y tasas de aprendizaje pequeñas o moderadas. La segunda es el costo computacional y el tamaño de la muestra, que con 1189 observaciones no justifica una búsqueda mucho más amplia. La rejilla no es exhaustiva, y su estrechez es una limitación. Por ejemplo, la combinación de una tasa de aprendizaje de 0.01 con 100 árboles puede subajustar, es decir, no alcanzar a aprender la relación; esto se verifica en el Capítulo 6 con los resultados de la búsqueda. % VERIFICAR: la afirmación de subajuste debe confirmarse con los errores de validación de esas combinaciones.
+
+\subsection{Modelos de regresión del índice de morosidad futuro}
+La regresión estima un número: el índice de morosidad del trimestre siguiente. Se entrenan tres modelos de árboles con los mismos doce predictores. Los fundamentos generales de estos métodos se presentan en la sección \ref{sec:ml} del marco teórico. Antes de describirlos, conviene entender qué es un árbol de decisión.
+
+Un árbol de decisión es una secuencia de preguntas de la forma ``¿el IMOR actual es mayor que 6?''. Cada respuesta lleva a otra pregunta, hasta llegar a una hoja, que contiene un valor de predicción. Para una institución con IMOR de 7.5, el árbol puede responder ``sí'' a la primera pregunta y luego ``no'' a la segunda, y predecir el promedio de las observaciones históricas que cayeron en esa hoja. Un árbol aislado es fácil de leer pero inestable, porque una pequeña variación en los datos puede cambiar sus preguntas. Por eso los métodos modernos combinan muchos árboles.
+
+Los predictores de la regresión son doce. Las variables IMOR actual, IMOR\_lag1, IMOR\_lag2 e IMOR\_lag3 describen la historia reciente de morosidad. IMOR\_ma3 e IMOR\_ma6 la suavizan. La tasa implícita, el nivel de capitalización (NICAP), la cartera vigente y los gastos de administración y promoción describen el negocio y la capitalización. El ratio de cartera sobre activo y el ROA describen la composición y la rentabilidad del balance. Como se explicó en la sección de conjunto de datos, las variables macroeconómicas no entran a la regresión; sí entran a los modelos multiobjetivo y al clasificador.
+
+\subsubsection{Random Forest}
+Random Forest, o bosque aleatorio, entrena muchos árboles independientes, cada uno con una muestra aleatoria de filas y de variables, y promedia sus predicciones (Breiman, 2001a). La idea es que los errores de árboles distintos se cancelan parcialmente al promediar. El código usa 200 árboles con profundidad máxima de 7, sin búsqueda de hiperparámetros. La profundidad máxima limita cuántas preguntas encadena cada árbol, lo que reduce la memorización de los datos de entrenamiento. Los valores se fijaron de antemano y no se optimizaron. Esto crea una asimetría en la comparación: XGBoost y LightGBM pasan por la búsqueda en rejilla y el bosque no. El resultado de la comparación debe leerse con ese sesgo en mente.
+
+\subsubsection{Gradient boosting con XGBoost y LightGBM}
+El gradient boosting construye los árboles en secuencia. El primer árbol aprende una predicción simple. Cada árbol siguiente se entrena sobre los errores que dejaron los anteriores, es decir, sobre los residuos, y se suma al conjunto con un peso pequeño (Friedman, 2001). Esa suma gradual es la que da nombre al método, porque cada árbol se ajusta en la dirección que reduce el error, como un descenso por gradiente. Los tres hiperparámetros que se buscan controlan este proceso.
+
+El número de árboles, n\_estimators, indica cuántas correcciones sucesivas se aplican. La profundidad máxima, max\_depth, indica cuántas preguntas encadenadas puede hacer cada árbol y, por tanto, cuánta interacción entre variables puede capturar. La tasa de aprendizaje, learning\_rate, es el peso con el que cada árbol corrige al conjunto: una tasa baja corrige poco en cada paso y necesita más árboles para llegar a la misma precisión, pero suele generalizar mejor. Un ejemplo sencillo ilustra la compensación: con una tasa de 0.1, diez árboles pueden cerrar gran parte del error; con una tasa de 0.01, se necesitarían muchos más para el mismo avance. La rejilla combina estos valores para encontrar un equilibrio entre precisión y sobreajuste.
+
+XGBoost (Chen y Guestrin, 2016) es una implementación del gradient boosting con regularización, es decir, con penalizaciones que evitan árboles demasiado complejos. El código usa la función objetivo reg:squarederror, que minimiza el error cuadrático, y fija la semilla con random\_state. LightGBM (Ke et al., 2017) implementa la misma idea con una estrategia distinta para crecer los árboles: en lugar de expandir todos los nodos del mismo nivel, expande primero la hoja que más reduce el error. El código usa el objetivo regression y suprime sus mensajes con verbose igual a menos uno. Ambas bibliotecas son eficientes en datos tabulares de tamaño medio, como el de este estudio.
+
+Las dos variantes de gradient boosting son comparables, pero no idénticas. Sus diferencias en el crecimiento de los árboles pueden producir errores distintos aunque tengan la misma rejilla. Por eso se entrenan y se reportan por separado. Las secciones del marco teórico sobre boosting y XGBoost (\ref{sec:boosting} y \ref{sec:xgb}) desarrollan la teoría de estos métodos.
+
+\subsection{Modelos multiobjetivo}
+Un modelo multiobjetivo es, en este pipeline, un conjunto de modelos independientes, uno por cada objetivo. Se entrenan tres: el índice de morosidad del siguiente trimestre, el nivel de capitalización del siguiente trimestre y el resultado neto del siguiente trimestre. Los predictores son los rezagos de esas tres variables, el identificador numérico de la institución y las cinco variables macroeconómicas. Este conjunto de predictores es el que incluye la información macroeconómica, a diferencia de la regresión principal.
+
+Para cada objetivo se entrenan dos modelos: un bosque aleatorio de 100 árboles y una máquina de gradient boosting de 100 árboles, usando la implementación de scikit-learn con sus valores por defecto para los demás hiperparámetros. El código calcula el error cuadrático medio de ambos sobre el 20 por ciento final de las filas y elige el que tiene menor error en ese conjunto. Esta selección es un problema de validez: el conjunto de prueba se usa para elegir el modelo y también para reportar su desempeño, por lo que el error reportado está sesgado a la baja. Una práctica correcta habría separado un conjunto de validación del de prueba. El código no lo hace, y el resultado debe leerse como una comparación exploratoria. El error cuadrático medio se define en la sección de métricas de este capítulo.
+
+\begin{lstlisting}[language=Python, caption={Entrenamiento de dos modelos por objetivo y selección por error en prueba}, label={lst:met_multi}]
+features_macro = ["lag_IMOR 1/ (%)", "lag_NICAP", "lag_Resultado Neto", "Nombre_ID"] + list(SERIES_IDS.keys())
+for name, target_col in targets.items():
+    X = df_ml[features_macro]
+    y = df_ml[target_col]
+    split = int(len(X) * 0.8)
+    X_train, y_train = X[:split], y[:split]
+    X_test, y_test = X[split:], y[split:]
+    rf = RandomForestRegressor(n_estimators=100, random_state=SEED).fit(X_train, y_train)
+    gbm = GradientBoostingRegressor(n_estimators=100, random_state=SEED).fit(X_train, y_train)
+    mse_rf = mean_squared_error(y_test, rf.predict(X_test))
+    mse_gbm = mean_squared_error(y_test, gbm.predict(X_test))
+    best_name = "RandomForest" if mse_rf < mse_gbm else "GradientBoosting"
+\end{lstlisting}
+
+El listado anterior omite la declaración del diccionario targets, que asocia cada nombre de objetivo con su columna, y las líneas de impresión de resultados. Los nombres de columna se abrevian por legibilidad en la lectura; el código completo está en el archivo del pipeline.
+
+\subsection{Clasificación del incumplimiento}
+La clasificación responde a una pregunta distinta: no cuánta morosidad habrá, sino si la institución superará un nivel crítico. Para ello se define una variable binaria. El código la llama Default y vale 1 si el índice de morosidad del trimestre siguiente es mayor que 10 por ciento, y 0 en otro caso. La ecuación es la siguiente.
+
+\begin{equation}
+\label{eq:met_default}
+\text{Default}_{i,t} = \mathbb{I}\left(\text{target\_IMOR}_{i,t} > 10\right)
+\end{equation}
+
+En la ecuación \eqref{eq:met_default}, $\mathbb{I}(\cdot)$ es la función indicadora, que vale 1 si la condición se cumple y 0 si no. Hay que ser preciso sobre el significado del término. Default en este estudio no es el incumplimiento legal de una obligación; es una variable operativa que indica que la morosidad futura supera el umbral elegido. El umbral de 10 por ciento es una decisión del investigador y no se deriva de una norma regulatoria incluida en el código. % VERIFICAR: el umbral de 10 por ciento debe justificarse con una referencia regulatoria o con un análisis de sensibilidad; ninguna fuente permitida lo sustenta.
+
+El umbral cumple una función práctica. Convierte un valor continuo en una alerta: una institución por encima del umbral merece revisión, una por debajo no. Su carácter arbitrario tiene dos consecuencias. La primera es que el desempeño de la clasificación depende de ese valor: con un umbral de 8 o de 12 los resultados cambiarían. La segunda es que la proporción de casos positivos, es decir, de instituciones por encima del umbral, define el desbalance de clases. Un desbalance es la situación en la que una clase es mucho más frecuente que la otra. Cuando los positivos son escasos, un clasificador que nunca alerta puede tener una exactitud alta sin servir para nada. Por eso el código registra la proporción de la clase minoritaria antes y después del remuestreo, y las cifras se reportan en el Capítulo 6.
+
+El clasificador usa ocho predictores: los rezagos del IMOR, del NICAP y del resultado neto, y las cinco variables macroeconómicas. La partición es la misma que en los modelos multiobjetivo: 80 por ciento de las filas para entrenamiento y 20 por ciento para prueba, por posición, con el mismo efecto que se describió antes.
+
+\subsubsection{Remuestreo con SMOTE-ENN}
+Cuando una clase es escasa, el entrenamiento puede favorecer a la clase mayoritaria. Este problema, llamado desbalance de clases, se describe en la sección \ref{sec:desbalance} del marco teórico. El remuestreo modifica el conjunto de entrenamiento para equilibrar las clases. SMOTE, por Synthetic Minority Over-sampling Technique, crea observaciones sintéticas de la clase minoritaria. Para cada observación minoritaria, busca sus vecinos más cercanos entre observaciones de la misma clase y genera un punto nuevo sobre el segmento que los une (Chawla et al., 2002). La ecuación es la siguiente.
+
+\begin{equation}
+\label{eq:met_smote}
+x_{\text{nuevo}} = x_i + \lambda\,(x_{\text{vecino}} - x_i), \qquad \lambda \sim U(0,1)
+\end{equation}
+
+En la ecuación \eqref{eq:met_smote}, $x_i$ es una observación minoritaria, $x_{\text{vecino}}$ es uno de sus vecinos minoritarios y $\lambda$ es un número aleatorio entre 0 y 1. El punto nuevo está sobre la línea que une ambos, por eso no es una copia exacta. ENN, por Edited Nearest Neighbours, hace lo contrario: elimina las observaciones cuya clase no coincide con la mayoría de sus vecinos, porque suelen ser ruido o están en la frontera entre clases (Wilson, 1972). SMOTE-ENN combina ambos pasos para equilibrar las clases y limpiar la frontera (Batista et al., 2004).
+
+El código aplica SMOTE-ENN sólo al conjunto de entrenamiento, antes de entrenar el clasificador. El conjunto de prueba queda sin remuestreo, lo que es correcto: el examen debe reflejar la distribución real de los datos. El listado siguiente muestra la operación.
+
+\begin{lstlisting}[language=Python, caption={Remuestreo SMOTE-ENN sobre el conjunto de entrenamiento}, label={lst:met_smoteenn}]
+sampler = SMOTEENN(random_state=SEED)
+X_train_res, y_train_res = sampler.fit_resample(X_train, y_train)
+\end{lstlisting}
+
+El riesgo de esta secuencia está en lo que ocurre dentro del entrenamiento. El clasificador de apilamiento usa validación cruzada interna sobre el conjunto ya remuestreado. Como los puntos sintéticos se generan a partir de observaciones reales, es posible que un punto sintético quede en un pliegue de validación y su origen en otro pliegue de entrenamiento. Entonces la validación interna es optimista, porque el modelo ya vio, de forma indirecta, lo que está validando. Esto no contamina el conjunto de prueba, que sí permanece intacto, pero sí puede inflar la estimación del desempeño interno y llevar a una elección de modelo peor que la óptima. La práctica recomendada es aplicar el remuestreo dentro de cada pliegue, de modo que la validación interna nunca vea observaciones generadas a partir de sus propios vecinos. Esta limitación se recoge en las amenazas a la validez.
+
+\subsubsection{Clasificador de apilamiento}
+El apilamiento, o stacking, es una técnica en la que varios modelos base predicen el mismo objetivo y un modelo final, llamado meta-modelo, aprende a combinar sus predicciones (Wolpert, 1992). Es una forma de ensamblar modelos que aprovecha que cada uno comete errores distintos. El código usa tres modelos base: un bosque aleatorio de 100 árboles con pesos balanceados por clase, un XGBoost clasificador y un LightGBM clasificador. El meta-modelo es una regresión logística.
+
+El peso balanceado por clase, class\_weight igual a balanced, asigna a cada observación un peso inversamente proporcional a la frecuencia de su clase. La ecuación usada por scikit-learn es la siguiente.
+
+\begin{equation}
+\label{eq:met_pesos}
+w_c = \frac{n}{k \cdot n_c}
+\end{equation}
+
+En la ecuación \eqref{eq:met_pesos}, $n$ es el número total de observaciones de entrenamiento, $k$ es el número de clases y $n_c$ es el número de observaciones de la clase $c$. Si la clase positiva es diez veces menos frecuente que la negativa, cada caso positivo pesa diez veces más en el entrenamiento. Este mecanismo es distinto del remuestreo, pero se usa en paralelo con él, lo que puede corregir dos veces el mismo desbalance. Esa superposición no se ajusta en el código y es otro punto que debe considerarse al interpretar el resultado.
+
+La regresión logística es un modelo lineal para probabilidades. Calcula una combinación lineal de las predicciones de los modelos base y la transforma con la función logística para obtener un número entre 0 y 1:
+
+\begin{equation}
+\label{eq:met_logit}
+p = \frac{1}{1+e^{-z}}, \qquad z = \beta_0 + \sum_{m} \beta_m\, \hat{p}_m
+\end{equation}
+
+En la ecuación \eqref{eq:met_logit}, $\hat{p}_m$ es la probabilidad que asigna el modelo base $m$ y $\beta$ son los pesos que el meta-modelo aprende. La sección \ref{sec:logit} del marco teórico desarrolla esta función con más detalle. El listado siguiente muestra la construcción del apilamiento.
+
+\begin{lstlisting}[language=Python, caption={Clasificador de apilamiento con validación cruzada no temporal}, label={lst:met_stacking}]
+base_learners = [
+    ("rf", RandomForestClassifier(n_estimators=100, random_state=SEED, class_weight="balanced")),
+    ("xgb", xgb.XGBClassifier(eval_metric="logloss", random_state=SEED)),
+    ("lgb", lgb.LGBMClassifier(random_state=SEED, verbose=-1)),
+]
+stacking_clf = StackingClassifier(estimators=base_learners, final_estimator=LogisticRegression(), cv=5)
+stacking_clf.fit(X_train_res, y_train_res)
+preds = stacking_clf.predict(X_test)
+probs = stacking_clf.predict_proba(X_test)[:, 1]
+\end{lstlisting}
+
+La opción cv igual a 5 indica que, para entrenar el meta-modelo sin usar las mismas observaciones con las que se entrenaron los modelos base, el stacking genera predicciones fuera de muestra con cinco pliegues. Para clasificadores, scikit-learn usa por defecto un reparto estratificado, que conserva la proporción de cada clase en cada pliegue. % VERIFICAR: confirmar en la versión de scikit-learn utilizada que el valor por defecto de cv para clasificadores es estratificado y sin mezcla. Este reparto no respeta el orden temporal, porque las observaciones se reparten por clase y no por fecha. Es una validación cruzada no temporal aplicada a datos que sí tienen orden. Su consecuencia es que los pliegues pueden contener observaciones de la misma institución en periodos distintos, y que la información del futuro de una institución puede servir para predecir su pasado dentro del entrenamiento. El conjunto de prueba, en cambio, no tiene este problema, porque se mantiene separado por posición.
+
+Las probabilidades que produce el clasificador se usan para calcular el ROC-AUC y las curvas, como se explica en la sección de métricas. El clasificador produce además una predicción binaria con el umbral 0.5, que es el valor por defecto de scikit-learn.
+
+\subsubsection{Interpretación con valores SHAP}
+Un modelo de apilamiento es difícil de interpretar porque combina tres modelos de árboles con un meta-modelo. Para explicar qué variables importan, el código usa valores SHAP, que se basan en la teoría de juegos y se describen en la sección \ref{sec:shapley} del marco teórico. Un valor de Shapley reparte la contribución de cada variable a una predicción entre todas las variables, según el aporte promedio que tiene al agregarse a cualquier subconjunto de las demás (Lundberg y Lee, 2017). La ecuación es la siguiente.
+
+\begin{equation}
+\label{eq:met_shap}
+\phi_j = \sum_{S \subseteq F\setminus\{j\}} \frac{|S|!\,(|F|-|S|-1)!}{|F|!}\left[f_{S\cup\{j\}}(x) - f_S(x)\right]
+\end{equation}
+
+En la ecuación \eqref{eq:met_shap}, $F$ es el conjunto de variables, $S$ un subconjunto de ellas, $f_S(x)$ la predicción del modelo usando sólo las variables de $S$ y $\phi_j$ la contribución de la variable $j$ a la predicción. Calcular esta suma exacta es costoso, pero para modelos de árboles existe un algoritmo rápido, TreeExplainer, que la calcula con precisión (Lundberg et al., 2020).
+
+El código calcula los valores SHAP sobre el XGBoost base del apilamiento, no sobre el apilamiento completo, porque el algoritmo rápido sólo aplica a árboles. La importancia global de cada variable es el promedio de sus valores absolutos sobre el conjunto de prueba. El código genera dos gráficos: uno de barras con esa importancia promedio y otro de enjambre, en el que cada punto es una observación y su posición horizontal indica cuánto empuja la variable la predicción hacia arriba o hacia abajo. La importancia promedio se calcula con la expresión siguiente.
+
+\begin{equation}
+\label{eq:met_shap_media}
+I_j = \frac{1}{n}\sum_{i=1}^{n} |\phi_{ij}|
+\end{equation}
+
+Esta medida tiene dos limitaciones que deben tenerse presentes. La primera es que describe el modelo XGBoost base, no el apilamiento final, así que una variable importante para XGBoost puede tener un papel distinto en la combinación. La segunda es que, cuando dos variables están muy correlacionadas, los valores de Shapley se reparten entre ellas de forma que depende del algoritmo. En el caso de las variables macroeconómicas simuladas, esta limitación es grave, como se explicó en la sección de conjunto de datos. Las figuras 14 y 15 se discuten en el Capítulo 6, y la tabla de importancias se guarda en el archivo de resultados.
+
+\subsection{Benchmarks univariados: ARIMA y SARIMA}
+Los benchmarks son modelos de referencia contra los que se mide el valor añadido de un modelo más complejo. Aquí la referencia son los modelos ARIMA y SARIMA, que pertenecen a la tradición de Box y Jenkins (1976). Son univariados, es decir, usan sólo la historia de la propia serie, sin variables externas. Se estiman institución por institución.
+
+ARIMA significa autorregresivo integrado de media móvil, en inglés AutoRegressive Integrated Moving Average. Cada una de sus tres piezas tiene una función sencilla. La parte autorregresiva usa valores pasados de la serie. La parte integrada usa diferencias, es decir, cambios de un trimestre a otro, para volver estacionaria una serie con tendencia. La parte de media móvil usa errores pasados del modelo. El orden ARIMA(p, d, q) indica cuántos términos hay de cada tipo. El código usa ARIMA(1,1,1), que en su forma diferenciada se escribe así.
+
+\begin{equation}
+\label{eq:met_arima}
+\Delta y_t = c + \phi\,\Delta y_{t-1} + \theta\,\varepsilon_{t-1} + \varepsilon_t
+\end{equation}
+
+En la ecuación \eqref{eq:met_arima}, $\Delta y_t = y_t - y_{t-1}$ es el cambio de la serie, $c$ es una constante, $\phi$ y $\theta$ son parámetros que se estiman y $\varepsilon_t$ es un error aleatorio. Con $p=1$ y $q=1$, el cambio de hoy depende del cambio de ayer y del error de ayer.
+
+SARIMA agrega a ARIMA una parte estacional, que captura patrones que se repiten cada cierto número de periodos. Se escribe SARIMA(p,d,q)(P,D,Q)s. El código usa SARIMAX con orden (1,1,1) y orden estacional (1,1,1,12). El periodo estacional 12 corresponde a un patrón anual en datos mensuales. Los datos de este estudio son trimestrales, según la descripción del boletín en este capítulo, y en ese caso el periodo estacional natural sería 4. Usar 12 en datos trimestrales no tiene justificación evidente y debe revisarse. % VERIFICAR: confirmar la frecuencia exacta de Periodo; si es trimestral, el periodo estacional de SARIMA debería ser 4 y el código lo fija en 12.
+
+El benchmark se evalúa con pronóstico rodante de un paso. La idea es sencilla. Se toma la serie de una institución, se usa una parte inicial para estimar el modelo, se predice el siguiente valor, se añade el valor real a la historia y se repite. En cada paso el modelo se vuelve a estimar con toda la historia disponible en ese momento, y el error se acumula. Esta forma de evaluar imita el uso real de un modelo univariado, y es la más exigente para las series cortas (Tashman, 2000). La Figura 16 usa la institución con más observaciones para ilustrar el resultado.
+
+El código elige las tres instituciones con más observaciones en el panel y descarta cualquiera que tenga menos de 20 filas. Para cada institución retenida empieza en la posición 12 de su serie, pronostica el valor 12, después el 13 con una historia que ya incluye el 12, y así sucesivamente. El listado siguiente muestra el ciclo.
+
+\begin{lstlisting}[language=Python, caption={Pronóstico rodante de un paso con ARIMA y SARIMAX}, label={lst:met_arima}]
+serie = grupo["IMOR 1/ (%)"].dropna().values.astype(float)
+for i in range(12, len(serie)):
+    train = serie[:i]
+    reales.append(serie[i])
+    fit_a = ARIMA(train, order=(1, 1, 1)).fit()
+    arima_preds.append(fit_a.forecast(steps=1)[0])
+    fit_s = SARIMAX(train, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12)).fit(disp=False)
+    sarima_preds.append(fit_s.forecast(steps=1)[0])
+\end{lstlisting}
+
+Con una serie de 15 observaciones, la primera predicción usa las 12 primeras para predecir la decimotercera; la última usa las 14 primeras para predecir la decimoquinta. Hay así tres pronósticos, cada uno con una historia mayor. Si un ajuste falla, el código registra un valor faltante y lo excluye del promedio. El error de cada institución es el MAE, que se define en la sección de métricas, y el resultado global es el promedio de las tres instituciones.
+
+Hay dos advertencias para leer la comparación. La primera es que los benchmarks se evalúan sólo en tres instituciones con historia extensa, mientras que los modelos de panel se evalúan en el conjunto de prueba completo. La Figura 17 marca esta diferencia con un asterisco, pero la comparación de promedios sigue mezclando poblaciones distintas. La segunda es que la curva de XGBoost en la Figura 16 no es un pronóstico rodante fuera de muestra. El código aplica el modelo ya entrenado a las filas de la institución de referencia, y esas filas pueden haber estado en el entrenamiento. Por ello esa curva ilustra el ajuste y no el desempeño predictivo.
 
 \section{Métricas de Evaluación}
-Para la tarea de predicción continua del IMOR futuro, se utilizan tres métricas complementarias:
-\begin{align}
-MAE &= \frac{1}{n}\sum_{i=1}^n |y_i-\hat{y}_i| \quad \text{(Error Absoluto Medio)}\\
-RMSE &= \sqrt{\frac{1}{n}\sum_{i=1}^n (y_i-\hat{y}_i)^2} \quad \text{(Raíz del Error Cuadrático Medio)}\\
-R^2 &= 1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2} \quad \text{(Coeficiente de Determinación)}
-\end{align}
-El MAE tiene interpretación en unidades originales (porcentaje de morosidad); el RMSE penaliza errores grandes; el $R^2$ cuantifica la proporción de varianza explicada por el modelo. Un $R^2$ cercano a uno indica un modelo que captura la mayor parte de la variabilidad; un $R^2$ cercano a cero indica un modelo apenas mejor que la media.
 
-Para la clasificación binaria de insolvencia crítica, se reportan cinco métricas que capturan diferentes aspectos del desempeño:
+Una métrica es una regla que convierte la diferencia entre lo que el modelo predijo y lo que ocurrió en un número. Elegir una métrica equivale a decidir qué tipo de error importa. Un error de 1 punto porcentual en el índice de morosidad de una institución pequeña puede ser irrelevante o muy grave, según el contexto, y las métricas que siguen reflejan distintas formas de penalizar el error. Todas se calculan sólo sobre el conjunto de prueba, como se explicó en la sección de modelos.
+
+\subsection{Métricas para la regresión}
+Para la predicción continua del índice de morosidad futuro se usan tres métricas. Sea $y_i$ el valor observado, $\hat{y}_i$ el valor predicho, $\bar{y}$ el promedio de los valores observados y $n$ el número de observaciones de prueba. La primera métrica es el error absoluto medio.
+
 \begin{align}
-\text{Accuracy} &= \frac{TP+TN}{TP+TN+FP+FN} \quad \text{(proporción correcta total)}\\
-\text{Precision} &= \frac{TP}{TP+FP} \quad \text{(de quiénes predigo Default, cuántos realmente incumpen)}\\
-\text{Recall} &= \frac{TP}{TP+FN} \quad \text{(de los Defaults reales, cuántos identifico)}\\
-F_1 &= 2\cdot\frac{\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recall}} \quad \text{(media armónica)}\\
-MCC &= \frac{TP\cdot TN - FP\cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}} \quad \text{(coef. de correlación)}
+MAE &= \frac{1}{n}\sum_{i=1}^n |y_i-\hat{y}_i| \quad \text{(Error Absoluto Medio)} \label{eq:met_mae}\\
+RMSE &= \sqrt{\frac{1}{n}\sum_{i=1}^n (y_i-\hat{y}_i)^2} \quad \text{(Raíz del Error Cuadrático Medio)} \label{eq:met_rmse}\\
+R^2 &= 1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2} \quad \text{(Coeficiente de Determinación)} \label{eq:met_r2}
 \end{align}
-El MCC es particularmente informativo en presencia de desbalance de clases porque incorpora los cuatro cuadrantes de la matriz de confusión de forma simétrica, a diferencia de la exactitud simple, que puede ser engañosamente alta si el clasificador favorece la clase mayoritaria. En aplicaciones de riesgo crediticio, el Recall (sensibilidad) es especialmente crítico: es preferible alertar sobre insolvencias que no ocurrieron (falsos positivos) que dejar pasar instituciones en riesgo real (falsos negativos).
+
+El MAE promedia el tamaño de los errores sin importar su signo, así que se expresa en las mismas unidades que el índice de morosidad, es decir, en puntos porcentuales. Su lectura es directa: un MAE de 0.8 significa que, en promedio, la predicción se aleja 0.8 puntos del valor real. El RMSE eleva cada error al cuadrado antes de promediar, de modo que los errores grandes pesan más. Por eso el RMSE es siempre igual o mayor que el MAE. La ecuación \eqref{eq:met_rmse} es el criterio que el código usa en la búsqueda de hiperparámetros, con el signo cambiado como se explicó antes. El coeficiente de determinación R cuadrada compara el error del modelo con el error de una predicción trivial que siempre diera el promedio. Si el R cuadrada es 0.96, el modelo explica 96 por ciento de la variación del índice; si es cero, no mejora la predicción del promedio; si es negativo, la empeora.
+
+El error cuadrático medio, MSE, es el RMSE sin la raíz. Se usa en la selección de los modelos multiobjetivo, y se define así:
+
+\begin{equation}
+\label{eq:met_mse}
+MSE = \frac{1}{n}\sum_{i=1}^n (y_i-\hat{y}_i)^2
+\end{equation}
+
+Un ejemplo de 100 casos muestra cómo se calculan y qué distinguen. En el escenario A, 50 observaciones tienen valor real 5 y el modelo predice 6, mientras que las otras 50 tienen valor real 15 y el modelo predice 14. Cada error absoluto es 1, así que MAE = 1 y RMSE = 1. El promedio de los valores reales es 10. La suma de cuadrados total es 50 por 25 más 50 por 25, es decir, 2500. La suma de errores al cuadrado es 100, así que R cuadrada es 1 menos 100 entre 2500, es decir, 0.96.
+
+En el escenario B, 98 observaciones se predicen sin error y 2 tienen error de 10 puntos. El MAE es (2 por 10) entre 100, es decir, 0.2. El RMSE es la raíz de (2 por 100) entre 100, es decir, raíz de 2, aproximadamente 1.41. Los dos escenarios tienen errores de distinto tamaño según la métrica. El MAE dice que el escenario B es muy bueno en promedio; el RMSE revela que hay dos fallas grandes. Por eso el capítulo reporta las dos y no sólo una.
+
+\subsection{Métricas para la clasificación}
+La clasificación produce una predicción de Default o no Default para cada observación de prueba. Sus resultados se resumen en una matriz de confusión, que cuenta cuatro casos: verdaderos positivos (TP), cuando se predice Default y ocurre; falsos positivos (FP), cuando se predice Default y no ocurre; verdaderos negativos (TN), cuando no se predice y no ocurre; y falsos negativos (FN), cuando no se predice y sí ocurre. Las métricas que siguen se calculan a partir de esos cuatro números.
+
+\begin{align}
+\text{Accuracy} &= \frac{TP+TN}{TP+TN+FP+FN} \quad \text{(proporción correcta total)} \label{eq:met_acc}\\
+\text{Precision} &= \frac{TP}{TP+FP} \quad \text{(de quiénes predigo Default, cuántos realmente incumplen)} \label{eq:met_prec}\\
+\text{Recall} &= \frac{TP}{TP+FN} \quad \text{(de los Defaults reales, cuántos identifico)} \label{eq:met_rec}\\
+F_1 &= 2\cdot\frac{\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recall}} \quad \text{(media armónica)} \label{eq:met_f1}\\
+MCC &= \frac{TP\cdot TN - FP\cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}} \quad \text{(coeficiente de correlación de Matthews)} \label{eq:met_mcc}
+\end{align}
+
+La exactitud, Accuracy, es la proporción de aciertos. Es la métrica más intuitiva, pero engaña cuando una clase es rara. La precisión, Precision, responde a la pregunta de quien recibe una alerta: de las instituciones señaladas, cuántas realmente superaron el umbral. La exhaustividad, Recall o sensibilidad, responde a la pregunta del supervisor: de las instituciones que sí superaron el umbral, cuántas se detectaron. El F1 es la media armónica de las dos, y sólo es alto si ambas lo son. La media armónica penaliza más un valor bajo que un promedio aritmético; por eso un clasificador que alerta a todo tiene recall perfecto y precisión baja, y su F1 es bajo.
+
+Un ejemplo de 100 casos muestra estas métricas. Supóngase una matriz con 20 verdaderos positivos, 5 falsos negativos, 10 falsos positivos y 65 verdaderos negativos. Hay 25 casos reales de Default (20 más 5) y 75 de no Default (10 más 65). La exactitud es (20 más 65) entre 100, es decir, 0.85. La precisión es 20 entre 30, aproximadamente 0.667. La exhaustividad es 20 entre 25, es decir, 0.80. El F1 es aproximadamente 0.727. El MCC es (20 por 65 menos 10 por 5) entre la raíz de 30 por 25 por 75 por 70, que da aproximadamente 0.63.
+
+Ahora supóngase un clasificador ingenuo que nunca predice Default. Tiene TP igual a 0, FN igual a 25, FP igual a 0 y TN igual a 75. Su exactitud es 75 entre 100, es decir, 0.75, un valor que parece razonable. Sin embargo, su exhaustividad es cero: no detecta ninguna institución en riesgo. El MCC no está definido en ese caso, porque el denominador vale cero, y por convención se toma como cero. Esta comparación explica por qué el capítulo no reporta sólo la exactitud. El MCC es particularmente informativo cuando hay desbalance, porque usa los cuatro cuadrantes de la matriz de forma simétrica (Matthews, 1975; Chicco y Jurman, 2020).
+
+En riesgo crediticio, el recall tiene especial importancia. Un falso positivo implica una revisión innecesaria; un falso negativo implica dejar pasar una institución en riesgo real. Por esa asimetría, un investigador puede preferir un recall alto aunque la precisión sea menor. La elección del umbral de decisión, que el código fija en 0.5 por defecto, cambia ese equilibrio, y por eso el capítulo también reporta curvas.
+
+\subsection{Métricas independientes del umbral}
+Las métricas anteriores dependen de un umbral de decisión: la probabilidad a partir de la cual se predice Default. Para evaluar la capacidad del modelo de ordenar las instituciones por riesgo, sin fijar un umbral, se usan dos áreas bajo curvas.
+
+El área bajo la curva ROC, ROC-AUC, mide la probabilidad de que una institución que sí incumplirá reciba una probabilidad mayor que una que no incumplirá. La curva ROC grafica la tasa de verdaderos positivos contra la tasa de falsos positivos para cada umbral posible. El área vale 0.5 para un clasificador aleatorio y 1 para uno perfecto (Fawcett, 2006). La ecuación es la siguiente.
+
+\begin{equation}
+\label{eq:met_auc}
+\text{ROC-AUC} = P\left(\hat{p}_{+} > \hat{p}_{-}\right) + \frac{1}{2}P\left(\hat{p}_{+} = \hat{p}_{-}\right)
+\end{equation}
+
+En la ecuación \eqref{eq:met_auc}, $\hat{p}_{+}$ es la probabilidad asignada a un caso positivo elegido al azar y $\hat{p}_{-}$ la asignada a un caso negativo elegido al azar. Un ejemplo pequeño: los positivos reciben probabilidades 0.9 y 0.4, y los negativos 0.6, 0.2 y 0.1. Hay seis pares posibles. El par (0.9, 0.6), el (0.9, 0.2), el (0.9, 0.1), el (0.4, 0.2) y el (0.4, 0.1) están bien ordenados, es decir, el positivo tiene la probabilidad mayor. El par (0.4, 0.6) no lo está. El ROC-AUC es 5 entre 6, aproximadamente 0.833.
+
+El área bajo la curva precisión-exhaustividad, PR-AUC, resume la relación entre precisión y recall para todos los umbrales. Es más informativa que el ROC-AUC cuando los positivos son escasos, porque el ROC-AUC puede parecer alto aunque la precisión sea baja (Davis y Goadrich, 2006; Saito y Rehmsmeier, 2015). Su línea base es la proporción de positivos del conjunto de prueba: un clasificador aleatorio tendría una precisión igual a esa proporción en todos los niveles de recall. En el ejemplo de 100 casos, la línea base sería 0.25. La ecuación de la precisión media, que aproxima el área, es la siguiente.
+
+\begin{equation}
+\label{eq:met_prauc}
+AP = \sum_{k}\left(R_k - R_{k-1}\right)P_k
+\end{equation}
+
+En la ecuación \eqref{eq:met_prauc}, $P_k$ y $R_k$ son la precisión y la exhaustividad en el umbral $k$. El código grafica la curva precisión-exhaustividad (figura 12), pero no calcula el PR-AUC como número en el archivo de resultados. Si la tesis reporta este valor, debe calcularse con la misma función de evaluación que el resto de métricas. % VERIFICAR: el código no tabula el PR-AUC; si se reporta, debe añadirse el cálculo en el pipeline.
+
+\subsection{Métricas de comparación con benchmarks}
+Los benchmarks ARIMA y SARIMA se evalúan con las mismas métricas de regresión. Su MAE es el promedio, sobre todos los pronósticos rodantes de una institución, del valor absoluto de la diferencia entre el valor real y el pronosticado, según la ecuación \eqref{eq:met_mae}. El código reporta el MAE de cada institución y el promedio de las tres instituciones de referencia. Ese promedio debe compararse sólo con el MAE de los modelos de panel calculado sobre la misma población, lo que el código no hace directamente. La Figura 17 marca esta diferencia con un asterisco. Véase también la subsección sobre benchmarks en la sección de modelos.
+
+\subsection{Lectura conjunta de las métricas}
+Ninguna métrica basta por sí sola. El MAE y el RMSE describen el tamaño del error de la regresión; el R cuadrada indica cuánta variación explica el modelo frente a un promedio simple. En clasificación, la exactitud ayuda sólo si las clases están equilibradas; el MCC y el F1 son más informativos con desbalance; el recall define la capacidad de detección; y el ROC-AUC y el PR-AUC describen la capacidad de ordenar. El capítulo de resultados debe reportar al menos una métrica de cada tipo y explicar cuál pesa más para la decisión que se quiere apoyar. Esa elección es una decisión sustantiva, no estadística, y debe justificarse en el capítulo de resultados.
+
+\section{Figuras y Salidas del Pipeline}
+
+El pipeline genera 17 figuras en formato PNG dentro de la carpeta figuras, y escribe todos los resultados numéricos en el archivo resultados\_metricas.json. Las figuras se generan con 350 puntos por pulgada, como se explicó en la sección de entorno computacional. El archivo JSON contiene, entre otros bloques, los datos de la exploración inicial, las métricas de regresión y sus mejores hiperparámetros, la importancia de variables del XGBoost, la comparación multiobjetivo, las cifras de desbalance, las métricas de clasificación, la importancia SHAP y los resultados de los benchmarks. La Tabla \ref{tab:met_figuras} resume cada figura, la información que muestra y el capítulo donde se discute.
+
+\begin{table}[H]
+\centering
+\caption{Figuras generadas por el pipeline a 350 dpi}
+\label{tab:met_figuras}
+\small
+\begin{tabularx}{\textwidth}{rp{4.8cm}Xp{1.6cm}}
+\toprule
+\textbf{No.} & \textbf{Archivo} & \textbf{Qué muestra} & \textbf{Capítulo} \\
+\midrule
+1 & fig01\_distribucion\_imor.png & Histograma del IMOR en las observaciones depuradas & 5 \\
+2 & fig02\_evolucion\_imor.png & Promedio sectorial del IMOR por periodo, con banda de una desviación estándar & 5 \\
+3 & fig03\_evolucion\_nicap.png & Promedio del NICAP por periodo, con referencia de 100 por ciento & 5 \\
+4 & fig04\_variables\_macro.png & Series de TIIE 28, inflación, IGAE y tipo de cambio & 5 \\
+5 & fig05\_correlaciones.png & Matriz de correlaciones entre las variables del panel & 5 \\
+6 & fig06\_boxplot\_instituciones.png & Distribución del IMOR en las diez instituciones con más observaciones & 5 \\
+7 & fig07\_obs\_vs\_pred\_xgb.png & Valores observados contra predichos del XGBoost & 6 \\
+8 & fig08\_residuos\_xgb.png & Residuos del XGBoost frente a la predicción y su histograma & 6 \\
+9 & fig09\_feature\_importance\_xgb.png & Importancia relativa de las variables en el XGBoost & 6 \\
+10 & fig10\_matriz\_confusion.png & Matriz de confusión del clasificador de apilamiento & 6 \\
+11 & fig11\_curva\_roc.png & Curva ROC del clasificador de apilamiento & 6 \\
+12 & fig12\_precision\_recall.png & Curva precisión-exhaustividad del clasificador & 6 \\
+13 & fig13\_distribucion\_probabilidades.png & Probabilidades predichas separadas por clase real & 6 \\
+14 & fig14\_shap\_importancia.png & Importancia media absoluta SHAP por variable & 6 \\
+15 & fig15\_shap\_beeswarm.png & Valores SHAP por observación, en formato de enjambre & 6 \\
+16 & fig16\_comparativa\_forecast.png & IMOR real frente a ARIMA, SARIMA y XGBoost en la institución de referencia & 6.1 \\
+17 & fig17\_comparativa\_mae\_modelos.png & MAE de los benchmarks y de los modelos de panel & 6 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% VERIFICAR: la asignación de capítulos de las figuras 10 a 15 y 17 no consta en el código; el código sólo marca como Capítulo 5 las figuras de exploración y como Capítulo 6 y 6.1 los modelos y benchmarks. Confirmar con el capítulo de resultados.
+
+% VERIFICAR: el diagrama de Ishikawa, que según la nota de trabajo se genera a 350 dpi, no aparece en el script ejecutar_pipeline_completo_ascii.py; si existe en otro script, debe documentarse por separado o eliminarse de este capítulo.
+
+\section{Amenazas a la Validez y Reproducibilidad}
+
+Esta sección reúne, de forma honesta, las limitaciones que afectan la interpretación de los resultados. Algunas son de diseño, otras de implementación y otras de datos. Se ordenan según su impacto potencial sobre las conclusiones.
+
+\subsection{Amenazas a la validez}
+\begin{itemize}
+    \item \textit{Partición no cronológica.} La separación de entrenamiento y prueba se hace por posición de las filas, que están ordenadas por institución y luego por periodo. El conjunto de prueba corresponde a las últimas instituciones en orden alfabético y comparte años con el entrenamiento. La evaluación no mide la predicción del futuro de la muestra. Esta amenaza es la más importante y se trata en la sección \ref{sec:limitaciones_marco} del marco teórico. Corregirla exige reordenar las filas por periodo, separar un punto de corte temporal común a todas las instituciones y repetir la evaluación.
+
+    \item \textit{Validación cruzada sin orden temporal entre instituciones.} TimeSeriesSplit garantiza el orden dentro de la secuencia recibida, pero esa secuencia agrupa por institución. Los pliegues de validación no son bloques de tiempo comunes. Además, la validación del clasificador de apilamiento es estratificada y no temporal.
+
+    \item \textit{Imputación con información futura.} El promedio de cada institución usa todos sus periodos disponibles en estatus de operación, incluidos los posteriores al faltante. Esto constituye una fuga de información (Kaufman et al., 2012) que puede hacer más optimista la estimación del error. La cuantía del efecto depende de la proporción de faltantes, que el código no reporta. Véase la sección \ref{sec:imputacion} del marco teórico.
+
+    \item \textit{Selección por exclusión de filas.} Las instituciones sin datos completos en la cartera vigente o en el activo se eliminan, y las que no alcanzan seis filas válidas también. Si esas exclusiones se relacionan con el riesgo, la muestra subestima la morosidad y la capacidad de generalización se mide sobre una población más estable que la real.
+
+    \item \textit{Relación entre las variables macroeconómicas.} Los resultados usan las series oficiales de Banco de México. La TIIE a 28 días y los Cetes a 28 días son tasas de corto plazo fuertemente relacionadas, por lo que los valores SHAP asociados a cada una deben leerse con cautela. Además, todas las instituciones de un mismo trimestre reciben el mismo valor macroeconómico y no se mide la exposición individual de cada SOFIPO. Véase la sección \ref{sec:limitaciones_macro} del marco teórico.
+
+    \item \textit{Umbral arbitrario de morosidad.} El umbral de 10 por ciento para definir Default no tiene una justificación regulatoria en el código. Los resultados de clasificación dependen de ese valor, y sin un análisis de sensibilidad no es posible saber cuánto.
+
+    \item \textit{Selección de modelo sobre el conjunto de prueba.} En los modelos multiobjetivo el mejor modelo se elige con el error del conjunto de prueba, que también se reporta. El error reportado está sesgado a la baja. La búsqueda de hiperparámetros de XGBoost y LightGBM sí usa validación cruzada, pero los parámetros del bosque aleatorio no se buscan, lo que asimetra la comparación.
+
+    \item \textit{SMOTE-ENN antes de la validación cruzada.} El remuestreo se aplica al entrenamiento completo antes de la validación cruzada interna del apilamiento. La validación interna puede ser optimista. El conjunto de prueba no se contamina, porque se separó antes del remuestreo.
+
+    \item \textit{Doble corrección del desbalance.} El remuestreo SMOTE-ENN y el peso balanceado por clase del bosque aleatorio corrigen el mismo desbalance. El efecto combinado no se evalúa por separado.
+
+    \item \textit{Estacionalidad no justificada en SARIMA.} El periodo estacional de 12 se usa en datos que, según el boletín, son trimestrales. Un periodo de 4 sería el natural. El benchmark puede estar mal especificado y subestimar o sobreestimar la capacidad de la serie univariada. % VERIFICAR: confirmar la frecuencia de Periodo antes de fijar el periodo estacional.
+
+    \item \textit{Benchmarks no comparables con el panel.} Los benchmarks univariados se evalúan en tres instituciones con historia extensa, y los modelos de panel en el conjunto de prueba completo. Además, la curva XGBoost de la figura 16 usa filas que pueden haber estado en el entrenamiento.
+
+    \item \textit{Identificador numérico de institución.} El código asigna a cada institución un número entero por orden alfabético. Un modelo de árboles puede usarlo para memorizar instituciones, lo que favorece el desempeño en la muestra, pero no necesariamente fuera de ella.
+
+    \item \textit{Umbral de decisión fijo.} El clasificador usa 0.5 por defecto para la predicción binaria. Las métricas de umbral dependen de esa elección, mientras que ROC-AUC no.
+
+    \item \textit{Seguridad del token de acceso a la API.} El archivo del script contiene, como valor por defecto de la variable de entorno BANXICO\_TOKEN, un valor literal con forma de token. Si la variable no está definida, el código usa ese valor. Ese token no debe publicarse, copiarse a documentos ni compartirse en repositorios. Debe eliminarse del código, tratarse como comprometido y reemplazarse por un token nuevo que sólo se lea de la variable de entorno. El texto de este capítulo no reproduce el valor.
+
+    \item \textit{Dependencia de versiones y sin archivo de requisitos.} El código no incluye un archivo con las versiones de las bibliotecas. Cambios en pandas, Polars, scikit-learn o statsmodels pueden alterar resultados decimales o comportamientos por defecto. % VERIFICAR: registrar las versiones usadas en la ejecución final.
+
+    \item \textit{Asociación, no causalidad.} Todos los resultados son predictivos y descriptivos. Una variable con alta importancia no implica que cause la morosidad, como se explicó en la sección de paradigma.
+\end{itemize}
+
+\subsection{Reproducción paso a paso}
+La ejecución del pipeline requiere cuatro pasos. Se describe cada uno con el mismo nivel de detalle para que pueda seguirse sin conocimientos previos de programación.
+
+El primer paso es instalar Python y las bibliotecas. En una terminal se ejecuta un comando de instalación con las bibliotecas que aparecen en la Tabla \ref{tab:met_librerias}. El comando fija NumPy en la versión 2.2 o anterior, porque la biblioteca SHAP lo requiere, y Polars en una versión anterior a la 2, porque el script usa un argumento que esa versión eliminó. Se recomienda registrar las versiones que se usen.
+
+\begin{lstlisting}[caption={Instalación de dependencias del pipeline}, label={lst:met_instalacion}]
+pip install "numpy<2.3" pandas "polars<2" duckdb pyarrow requests scikit-learn xgboost lightgbm statsmodels shap imbalanced-learn matplotlib
+\end{lstlisting}
+
+El segundo paso es colocar el archivo sofipo\_base\_completa.parquet en la misma carpeta que el script. El código lee el archivo con una ruta relativa, así que debe ejecutarse desde esa carpeta. La carpeta figuras se crea automáticamente si no existe.
+
+El tercer paso es dar al script el token personal que cada usuario obtiene en el sitio de Banco de México. Puede definirse como variable de entorno llamada BANXICO\_TOKEN, o guardarse en un archivo local llamado api.txt en la misma carpeta del script. Ese archivo no debe versionarse ni escribirse en el texto de la tesis. En PowerShell, la variable de entorno se define con el comando siguiente, donde el texto entre corchetes se sustituye por el token propio.
+
+\begin{lstlisting}[caption={Definición de la variable de entorno con un token personal}, label={lst:met_token}]
+$env:BANXICO_TOKEN = "<token personal, no compartir>"
+\end{lstlisting}
+
+El cuarto paso es ejecutar el script desde la misma carpeta con el comando python seguido del nombre del archivo del pipeline. Al terminar, la carpeta figuras contiene las diecisiete figuras a 350 puntos por pulgada y el archivo resultados\_metricas.json contiene los valores numéricos. Si la descarga de las series macroeconómicas falla, el pipeline se detiene con un error, en lugar de continuar con datos sustitutos. Los resultados, figuras y métricas de los Capítulos 5 a 8 provienen de una ejecución con las series oficiales de Banco de México. Una ejecución anterior con series sintéticas se descartó.
 

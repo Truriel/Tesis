@@ -18,7 +18,7 @@ La Figura \ref{fig:arquitectura} sintetiza el flujo completo de datos, desde las
 \node[box, below=of limpieza] (features) {Ingeniería de características\\(Polars: rezagos, medias móviles, ratios)};
 \node[box, below=of features] (dataset) {Dataset panel final\\(1189 obs. $\times$ 46 instituciones)};
 \node[box, below=of dataset] (modelos) {Modelos\\(ARIMA/SARIMA, XGBoost, LightGBM, RF, Stacking)};
-\node[box, below=of modelos] (validacion) {Validación temporal\\(TimeSeriesSplit, partición cronológica)};
+\node[box, below=of modelos] (validacion) {Validación temporal\\(TimeSeriesSplit, partición por posición)};
 \node[box, below=of validacion] (shap) {Interpretabilidad\\(SHAP)};
 \node[box, below=of shap] (alerta) {Sistema de alerta temprana\\(score de riesgo)};
 \node[box, below=of alerta] (resultados) {Resultados y reporte\\(figuras, tablas, dashboard)};

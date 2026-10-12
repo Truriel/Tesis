@@ -1,9 +1,702 @@
 % =========================================================================
 % CAPÍTULO 2
 % =========================================================================
-\chapter{Marco Teórico Integral}
+\chapter{Marco Teórico}
 
-Este capítulo fundamenta teóricamente los modelos empleados en la tesis. La econometría de datos panel y de series temporales se presenta como línea base compacta, mientras que el aprendizaje automático supervisado constituye el núcleo del marco. Para cada método se expone el modelo matemático, sus supuestos y sus limitaciones, y se indica qué parte se utilizó en la implementación. La sección final describe los límites metodológicos del estudio tal como se derivan del código, con sus fundamentos teóricos. Las cifras de resultados no se reproducen aquí; se reportan en los Capítulos 5 a 7.
+Este capítulo fundamenta teóricamente los modelos empleados en la tesis. El desarrollo avanza de lo más elemental a lo más avanzado: primero se establecen las bases matemáticas y estadísticas, después los fundamentos de programación y manejo de datos, luego el contexto financiero y de microfinanzas, y finalmente la econometría de panel y el aprendizaje automático supervisado, que constituye el núcleo del marco. Para cada método se expone el modelo matemático, sus supuestos y sus limitaciones, y se indica qué parte se utilizó en la implementación. La sección final describe los límites metodológicos del estudio tal como se derivan del código, con sus fundamentos teóricos. Las cifras de resultados no se reproducen aquí; se reportan en los Capítulos 5 a 7. El orden de exposición avanza de lo elemental a lo avanzado: primero la probabilidad y la estadística, después la programación y el manejo de datos, luego los estados financieros y las variables macroeconómicas que describen el entorno de una SOFIPO, a continuación el riesgo de crédito, la econometría de paneles y series de tiempo, la optimización matemática y computacional que sostiene a los algoritmos, y finalmente el aprendizaje automático supervisado y los procedimientos de validación y evaluación. Cada concepto se presenta en cuatro pasos: una idea intuitiva en lenguaje sencillo, la definición formal, un ejemplo numérico ilustrativo y la razón por la que se usa en la tesis.
+
+\section{Fundamentos Matemáticos y Estadísticos}\label{sec:fund_mat}
+
+Esta sección reúne las herramientas mínimas que se usan en el resto del capítulo. Todas las definiciones se ilustran con el caso de interés de la tesis: si una institución cae en incumplimiento en un periodo, o no.
+
+\subsection{Espacio muestral, eventos y axiomas de Kolmogorov}
+Un experimento aleatorio es un proceso cuyo resultado no se conoce de antemano, aunque el conjunto de resultados posibles sí puede describirse. Ese conjunto se llama espacio muestral y se denota $\Omega$. Un evento es un subconjunto de $\Omega$, es decir, una colección de resultados a los que se asocia una pregunta concreta. En el contexto de la tesis, $\Omega$ puede representar las posibles trayectorias de morosidad de una institución en un trimestre, y el evento $A$ puede ser ``la institución entra en incumplimiento en el trimestre siguiente''.
+
+La probabilidad es una función $P$ que asigna a cada evento un número entre 0 y 1 y que cumple los axiomas de Kolmogorov, la base axiomática de la teoría moderna de la probabilidad (Casella y Berger, 2002):
+\begin{equation}
+P(A)\geq 0 \ \text{para todo evento } A, \qquad P(\Omega)=1, \qquad P\Big(\bigcup_{k=1}^{\infty} A_k\Big)=\sum_{k=1}^{\infty} P(A_k)\ \text{si los eventos } A_k \text{ son disjuntos}
+\label{eq:kolmogorov}
+\end{equation}
+A partir de estos axiomas se deducen reglas de uso frecuente. La probabilidad del complemento es $P(A^c)=1-P(A)$, y para dos eventos cualesquiera $P(A\cup B)=P(A)+P(B)-P(A\cap B)$. La segunda regla implica que, cuando los eventos se superponen, sumar sus probabilidades sobrestima la probabilidad de su unión.
+
+\textit{Ejemplo ilustrativo.} Si la probabilidad de incumplimiento trimestral de una institución hipotética es $P(A)=0.04$, la probabilidad de no incumplir es $P(A^c)=0.96$. Si además existe un evento de alerta $B$ con $P(B)=0.03$ y $P(A\cap B)=0.02$, la probabilidad de que ocurra al menos uno de los dos es $0.04+0.03-0.02=0.05$.
+
+Todo el marco probabilístico de la tesis descansa en estos axiomas. La variable de incumplimiento es un evento binario, y su esperanza coincide con una probabilidad, como se mostró en la Ecuación~\eqref{eq:esperanza_varianza}. Cuando la tesis trata la proporción de instituciones con IMOR superior a 10\% como una probabilidad, supone una interpretación frecuentista de $P$, que solo es razonable si las observaciones se comportan de forma relativamente estable en el tiempo. Ese supuesto se discute en la Sección~\ref{sec:limitaciones_marco}.
+
+\subsection{Variables aleatorias, esperanza y varianza}
+Una variable aleatoria $X$ asigna un número real a cada resultado de un experimento aleatorio. Su \textit{esperanza} $\mathbb{E}[X]$ es el promedio de sus valores ponderado por su probabilidad, y su \textit{varianza} mide la dispersión alrededor de ese promedio:
+\begin{equation}
+\mathbb{E}[X] = \sum_x x\,P(X=x), \qquad \text{Var}(X) = \mathbb{E}\big[(X-\mathbb{E}[X])^2\big] = \mathbb{E}[X^2]-\big(\mathbb{E}[X]\big)^2
+\label{eq:esperanza_varianza}
+\end{equation}
+La esperanza es lineal: $\mathbb{E}[aX+bY]=a\,\mathbb{E}[X]+b\,\mathbb{E}[Y]$ para constantes $a$ y $b$, sin importar si $X$ y $Y$ son dependientes. La varianza no es lineal: $\text{Var}(aX+bY)=a^2\text{Var}(X)+b^2\text{Var}(Y)+2ab\,\text{Cov}(X,Y)$, por lo que la dependencia entre variables sí afecta la dispersión de una combinación.
+
+Estos conceptos sirven para interpretar la variable de incumplimiento. Si $D$ toma el valor 1 cuando una institución entra en incumplimiento y 0 en caso contrario, entonces $\mathbb{E}[D]=P(D=1)$ es la probabilidad de incumplimiento, y la varianza de $D$ es $P(D=1)\,(1-P(D=1))$, que alcanza su máximo cuando la probabilidad es $0.5$. Esto explica por qué los eventos raros tienen poca variabilidad absoluta pero concentran el riesgo económico.
+
+\subsection{Variables discretas, continuas y función de distribución acumulada}
+Una variable aleatoria es discreta si toma un conjunto finito o numerable de valores, como el número de incumplimientos en un trimestre, y es continua si toma valores en un intervalo, como el IMOR medido en puntos porcentuales. Para una variable discreta, la función de masa de probabilidad asigna a cada valor $x$ la probabilidad $p(x)=P(X=x)$, con $\sum_x p(x)=1$. Para una variable continua, la probabilidad de un valor puntual es cero y la información se concentra en la función de densidad $f$, que cumple $f(x)\geq 0$ e $\int f(x)\,dx=1$. La probabilidad de un intervalo es $P(a\leq X\leq b)=\int_a^b f(x)\,dx$.
+
+Para cualquier variable, discreta o continua, la función de distribución acumulada se define como
+\begin{equation}
+F_X(x)=P(X\leq x), \qquad \lim_{x\to-\infty}F_X(x)=0, \qquad \lim_{x\to\infty}F_X(x)=1
+\label{eq:cdf}
+\end{equation}
+Es no decreciente y continua por la derecha. Para una variable continua, $f(x)=F_X'(x)$ siempre que la derivada exista. La función de distribución permite calcular probabilidades de cola, por ejemplo $P(X>c)=1-F_X(c)$, y es la base de los cuantiles y de los contrastes de hipótesis que se describen más adelante (Casella y Berger, 2002).
+
+\textit{Ejemplo ilustrativo.} Si el IMOR de una institución siguiera una distribución hipotética con $F(10)=0.85$, entonces $P(\text{IMOR}>10)=0.15$, es decir, el 15\% de las observaciones superaría el umbral de 10\% que la tesis utiliza para definir incumplimiento.
+
+La distinción entre variables discretas y continuas importa en la tesis porque el IMOR se reporta con decimales y se trata como continuo en la regresión, mientras que la variable de incumplimiento es binaria y se modela como discreta en la clasificación.
+
+\subsection{Covarianza, correlación y matriz de correlación}
+La covarianza mide si dos variables tienden a desviarse de sus medias en la misma dirección. Se define como
+\begin{equation}
+\text{Cov}(X,Y)=\mathbb{E}\big[(X-\mathbb{E}[X])(Y-\mathbb{E}[Y])\big]=\mathbb{E}[XY]-\mathbb{E}[X]\,\mathbb{E}[Y]
+\label{eq:covarianza}
+\end{equation}
+Su magnitud depende de las unidades de medida, por lo que se normaliza con las desviaciones estándar $\sigma_X=\sqrt{\text{Var}(X)}$ y $\sigma_Y=\sqrt{\text{Var}(Y)}$ para obtener el coeficiente de correlación de Pearson:
+\begin{equation}
+\rho_{XY}=\frac{\text{Cov}(X,Y)}{\sigma_X\,\sigma_Y}, \qquad -1\leq \rho_{XY}\leq 1
+\label{eq:correlacion}
+\end{equation}
+La correlación de Pearson mide asociación lineal. Dos variables pueden tener correlación cero y aun así estar relacionadas de forma no lineal, y una correlación alta puede deberse a un factor común, como el ciclo económico, que afecta a ambas al mismo tiempo. Para $p$ variables, la matriz de correlación $R$ contiene en la posición $(j,k)$ el coeficiente $\rho_{jk}$. Es simétrica y su diagonal vale uno (Hastie et al., 2009).
+
+La figura de matriz de correlación que se presenta en el Capítulo 5 grafica esa matriz para las variables del panel, incluidos los rezagos del IMOR, el ROA, la razón cartera-activo y las variables macroeconómicas. Su uso es triple: detectar pares de predictores casi redundantes, anticipar problemas de colinealidad y verificar que la construcción de variables no introduzca dependencias inesperadas. Una correlación de 1 entre dos predictores, como la que existiría entre dos series construidas una a partir de la otra, es señal de colinealidad perfecta, no de un hallazgo económico.
+
+\textit{Ejemplo ilustrativo.} Si $\sigma_X=2$, $\sigma_Y=5$ y $\text{Cov}(X,Y)=6$, entonces $\rho_{XY}=6/(2\cdot 5)=0.6$. Este valor indica una asociación lineal positiva moderada, sin implicar que una variable cause a la otra.
+
+\subsection{Distribuciones de probabilidad relevantes}
+La distribución de Bernoulli describe un evento binario con probabilidad $p$. La distribución binomial describe el número de éxitos en $n$ ensayos independientes con la misma probabilidad:
+\begin{equation}
+P(K=k) = \binom{n}{k}\,p^k\,(1-p)^{n-k}, \qquad k=0,1,\dots,n
+\label{eq:binomial}
+\end{equation}
+Si $n$ créditos independientes tienen cada uno probabilidad de incumplimiento $p$, el número de incumplimientos sigue esta distribución. El supuesto de independencia es el punto débil: en la práctica los incumplimientos se correlacionan por choques comunes, como una recesión o un cambio regulatorio. Por ello, la distribución binomial subestima las colas de la pérdida. Los modelos de riesgo de cartera, como los que sustentan los requerimientos de Basilea, incorporan correlación entre deudores (Basel Committee on Banking Supervision, 2011).
+
+La distribución normal describe errores de medición y residuos agregados; sus propiedades explican por qué el error cuadrático medio tiene una interpretación probabilística natural en regresión (Hastie et al., 2009). Su densidad es $f(x)=\frac{1}{\sigma\sqrt{2\pi}}\exp\big(-\frac{(x-\mu)^2}{2\sigma^2}\big)$, con media $\mu$ y varianza $\sigma^2$, y se denota $X\sim\mathcal{N}(\mu,\sigma^2)$. Si $y_i=\mathbf{x}_i^\top\boldsymbol{\beta}+\epsilon_i$ con $\epsilon_i\sim\mathcal{N}(0,\sigma^2)$ independientes, la log-verosimilitud de la muestra es
+\begin{equation}
+\ell(\boldsymbol{\beta},\sigma^2)=-\frac{n}{2}\log(2\pi\sigma^2)-\frac{1}{2\sigma^2}\sum_{i=1}^n\big(y_i-\mathbf{x}_i^\top\boldsymbol{\beta}\big)^2
+\label{eq:normal_loglik}
+\end{equation}
+Maximizar esta expresión en $\boldsymbol{\beta}$ equivale a minimizar la suma de errores cuadráticos. Por eso el mínimo cuadrado de la Ecuación~\eqref{eq:mco} coincide con el estimador de máxima verosimilitud bajo errores gaussianos (Wooldridge, 2010).
+
+\textit{Distribución uniforme.} Una variable $U\sim\mathcal{U}(a,b)$ tiene densidad constante $f(x)=\frac{1}{b-a}$ en el intervalo $[a,b]$, con media $\frac{a+b}{2}$ y varianza $\frac{(b-a)^2}{12}$ (Casella y Berger, 2002). Su presencia en la tesis es indirecta: el sobremuestreo SMOTE usa un factor $\delta\sim\mathcal{U}(0,1)$ para interpolar entre dos observaciones, como se muestra en la Ecuación~\eqref{eq:smote}.
+
+\textit{Distribución Bernoulli y binomial.} La variable de Bernoulli toma valor 1 con probabilidad $p$ y 0 con probabilidad $1-p$; su media es $p$ y su varianza, $p(1-p)$. La binomial, definida en la Ecuación~\eqref{eq:binomial}, tiene media $np$ y varianza $np(1-p)$ (Casella y Berger, 2002). La varianza de una binomial depende de la probabilidad $p$, lo que implica que la dispersión del número de incumplimientos cambia cuando cambia el nivel de riesgo.
+
+\subsection{Leyes de los grandes números y teorema central del límite}
+Supóngase que $X_1,\dots,X_n$ son variables independientes e idénticamente distribuidas con media $\mu$ y varianza $\sigma^2$, y sea $\bar{X}_n=\frac{1}{n}\sum_{i=1}^n X_i$ su promedio muestral. La intuición es que, al promediar más observaciones, el resultado se estabiliza alrededor de la media verdadera. La ley de los grandes números formaliza esta idea: $\bar{X}_n$ converge en probabilidad a $\mu$ cuando $n$ crece. El teorema central del límite describe el tamaño típico del error:
+\begin{equation}
+\frac{\sqrt{n}\,(\bar{X}_n-\mu)}{\sigma}\ \xrightarrow{\ d\ }\ \mathcal{N}(0,1)
+\label{eq:tcl}
+\end{equation}
+La convergencia es en distribución, y el resultado vale sin conocer la forma de la distribución original, siempre que la varianza sea finita (Casella y Berger, 2002).
+
+\textit{Ejemplo ilustrativo.} Si la proporción de instituciones con incumplimiento es $p=0.05$ y se observan $n=400$ instituciones independientes, el error estándar de la proporción es $\sqrt{0.05\cdot 0.95/400}\approx 0.0109$. Un intervalo aproximado de 95\% es $0.05\pm 1.96\cdot 0.0109$, es decir, de 0.029 a 0.071.
+
+Estos resultados justifican que las proporciones y los promedios calculados sobre el panel se interpreten como aproximaciones de cantidades poblacionales, y que los errores estándar se usen para medir la precisión de esas aproximaciones. Su alcance, sin embargo, es limitado en el caso de la tesis: el número de instituciones es moderado y los eventos de incumplimiento son raros, por lo que las aproximaciones normales deben tomarse con cautela.
+
+\subsection{Probabilidad condicional y teorema de Bayes}
+La probabilidad condicional de $A$ dado $B$ es $P(A\mid B)=P(A\cap B)/P(B)$. De ella se deriva el teorema de Bayes:
+\begin{equation}
+P(A\mid B) = \frac{P(B\mid A)\,P(A)}{P(B)}
+\label{eq:bayes}
+\end{equation}
+Este resultado tiene una consecuencia directa para la clasificación de insolvencias. Sea $\pi$ la prevalencia de la clase positiva, $s$ la sensibilidad del clasificador y $e$ su especificidad. La precisión, o valor predictivo positivo, es
+\begin{equation}
+\text{Precisión} = \frac{s\,\pi}{s\,\pi + (1-e)(1-\pi)}
+\label{eq:precision_bayes}
+\end{equation}
+Con una prevalencia baja de incumplimiento, un clasificador con sensibilidad y especificidad altas puede tener precisión modesta, porque la gran cantidad de negativos produce muchos falsos positivos en términos absolutos. Este es el motivo por el que el desbalance de clases se trata en la Sección~\ref{sec:desbalance}.
+
+\subsection{Estimación por máxima verosimilitud}
+Si las observaciones $y_1,\dots,y_n$ son independientes con densidad (o masa) $f(y;\theta)$, la función de verosimilitud es $L(\theta)=\prod_{i=1}^n f(y_i;\theta)$. Como el producto es numéricamente inestable, se maximiza su logaritmo, $\ell(\theta)=\sum_{i=1}^n \log f(y_i;\theta)$. Para el caso de Bernoulli, $\ell(p)=\sum_i\big[y_i\log p+(1-y_i)\log(1-p)\big]$, cuyo máximo se alcanza en $\hat{p}=\frac{1}{n}\sum_i y_i$, es decir, la proporción observada de incumplimientos. El estimador de máxima verosimilitud es consistente y asintóticamente eficiente bajo condiciones de regularidad (Wooldridge, 2010). La regresión logística, que se presenta más adelante, se estima con este principio.
+
+\textit{Ejemplo ilustrativo.} Sean $y=(1,0,0,1,0)$ cinco observaciones de incumplimiento (1 significa incumplimiento). La log-verosimilitud es $\ell(p)=2\log p+3\log(1-p)$. Su derivada es $2/p-3/(1-p)$, que se anula en $\hat{p}=2/5=0.4$, igual a la proporción muestral. Este resultado no es casual: en el modelo Bernoulli sin covariables, el estimador de máxima verosimilitud siempre es la frecuencia observada.
+
+El principio de máxima verosimilitud tiene tres propiedades que se utilizan en la tesis de manera implícita. La primera es la consistencia, es decir, la convergencia al valor verdadero cuando crece la muestra. La segunda es la normalidad asintótica, que permite construir errores estándar a partir de la información de Fisher. La tercera es la invariancia: si $\hat\theta$ es el estimador de $\theta$, entonces $g(\hat\theta)$ es el estimador de $g(\theta)$ (Casella y Berger, 2002). Para la regresión logística, la log-verosimilitud es cóncava en los parámetros, por lo que los métodos numéricos de optimización convergen al mismo máximo global (Hosmer et al., 2013). Esta propiedad se relaciona con la optimización que se describe en la Sección~\ref{sec:optimizacion}.
+
+\subsection{Estadística descriptiva, cuantiles y valores atípicos}
+La estadística descriptiva resume una muestra mediante unas pocas cantidades. La media muestral es $\bar{x}=\frac{1}{n}\sum_i x_i$, y la mediana es el valor que deja la mitad de las observaciones por debajo y la mitad por encima. Un cuantil de orden $p\in(0,1)$ es el valor $q_p$ tal que $F(q_p)\geq p$ y que deja una fracción $p$ de la distribución por debajo. Los cuartiles $Q_1$, $Q_2$ y $Q_3$ corresponden a $p=0.25$, $0.5$ y $0.75$. El rango intercuartílico es $\text{RIQ}=Q_3-Q_1$ y mide la dispersión de la mitad central de los datos (Hastie et al., 2009).
+
+El diagrama de caja resume estas cantidades: una caja que va de $Q_1$ a $Q_3$, una línea en la mediana y bigotes que llegan hasta la observación más extrema que no supere $1.5\,\text{RIQ}$ por encima de $Q_3$ o por debajo de $Q_1$. Las observaciones fuera de ese rango se marcan como puntos. La convención de 1.5 RIQ es la que emplea matplotlib por defecto (Hunter, 2007), y es la que se observa en la figura de comparación de instituciones del Capítulo 5.
+
+El histograma aproxima la densidad mediante conteos en intervalos de igual ancho. Su forma depende del número de intervalos, por lo que no debe leerse como una propiedad exacta de la distribución. La asimetría y la curtosis resumen la forma de la distribución. La asimetría muestral es $\hat{\gamma}_1=\frac{1}{n}\sum_i\big(\frac{x_i-\bar{x}}{s}\big)^3$, donde $s$ es la desviación estándar muestral; una asimetría positiva indica una cola larga hacia la derecha. La curtosis es $\hat{\kappa}=\frac{1}{n}\sum_i\big(\frac{x_i-\bar{x}}{s}\big)^4$, y para una normal vale aproximadamente 3. Por eso se reporta el exceso de curtosis, $\hat{\kappa}-3$, cuyo valor positivo indica colas más pesadas que las de la normal (Casella y Berger, 2002).
+
+\subsection{Estadística robusta: mediana, MAD y valores atípicos}
+La media y la desviación estándar son sensibles a valores extremos: una sola observación suficientemente grande puede cambiar la media en una magnitud arbitraria. Por ello la estadística robusta utiliza medidas que no dependen de la cola de la distribución. La mediana tiene un punto de ruptura de 50\%, es decir, puede soportar hasta la mitad de los datos contaminados sin cambiar de forma arbitraria. La desviación absoluta mediana (MAD) es
+\begin{equation}
+\text{MAD}=\text{mediana}\big(|x_i-\text{mediana}(x)|\big)
+\label{eq:mad}
+\end{equation}
+Bajo normalidad, la MAD estima $\sigma$ después de dividirla entre $\Phi^{-1}(0.75)\approx 0.6745$; equivalentemente, $1.4826\cdot\text{MAD}$ es un estimador consistente de la desviación estándar. El puntaje robusto de una observación es $z_i^{\text{rob}}=(x_i-\text{mediana})/(1.4826\cdot\text{MAD})$. Esta idea se describe en la literatura de estimación robusta que resume Hastie et al. (2009).
+
+\textit{Ejemplo ilustrativo.} Considérese un IMOR hipotético de cinco observaciones: $(4.0,\,4.5,\,5.0,\,5.5,\,60.0)$. La media es $15.8$, dominada por el último valor. La mediana es $5.0$. Las desviaciones absolutas respecto de la mediana son $(1.0,\,0.5,\,0,\,0.5,\,55.0)$, cuya mediana es $0.5$, así que la MAD es $0.5$. El puntaje robusto del valor $60.0$ es $(60-5)/(1.4826\cdot 0.5)\approx 74$, lo que lo identifica de forma clara como atípico.
+
+La razón de usar estas herramientas en la tesis es concreta. El NICAP contiene valores atípicos extremos, de posible origen en errores de captura. Con una media y una desviación estándar contaminadas, los diagnósticos de dispersión y las gráficas de las medias sectoriales se distorsionan; con la mediana y la MAD se obtiene una descripción que no depende de unos pocos registros. Eliminar valores atípicos sin justificación equivale a modificar los datos, por lo que lo adecuado es reportarlos y describir su efecto.
+
+\subsection{Estimadores: sesgo, consistencia, eficiencia y error estándar}
+Un estimador $\hat{\theta}$ es una función de la muestra que se usa para aproximar un parámetro $\theta$. Su sesgo es $\text{Sesgo}(\hat{\theta})=\mathbb{E}[\hat{\theta}]-\theta$. Un estimador es insesgado si su sesgo es cero. Es consistente si $\hat{\theta}\to\theta$ en probabilidad cuando $n\to\infty$, y es más eficiente que otro si, entre los insesgados, tiene menor varianza. El error estándar es la desviación estándar del estimador, $\text{EE}(\hat{\theta})=\sqrt{\text{Var}(\hat{\theta})}$, y mide la precisión típica de la estimación (Casella y Berger, 2002).
+
+El error cuadrático medio de un estimador se descompone en varianza y sesgo al cuadrado:
+\begin{equation}
+\text{ECM}(\hat{\theta})=\mathbb{E}\big[(\hat{\theta}-\theta)^2\big]=\text{Var}(\hat{\theta})+\text{Sesgo}(\hat{\theta})^2
+\label{eq:ecm_estimador}
+\end{equation}
+Esta identidad es la versión muestral del compromiso sesgo-varianza de la Ecuación~\eqref{eq:sesgo_varianza}, aplicada ahora al estimador del parámetro y no a la predicción.
+
+\textit{Ejemplo ilustrativo.} La varianza muestral con divisor $n$, $\frac{1}{n}\sum_i(x_i-\bar{x})^2$, tiene sesgo negativo, pues $\mathbb{E}$ de ese estimador es $\frac{n-1}{n}\sigma^2$. Con divisor $n-1$ el estimador es insesgado (Casella y Berger, 2002). Para la media muestral, el error estándar es $s/\sqrt{n}$, que es el que se usa para dimensionar la precisión de los promedios del panel.
+
+Los conceptos de sesgo y varianza aparecen en la tesis en dos niveles. En el nivel de los estimadores de los modelos lineales, el sesgo por variables omitidas invalida la interpretación causal de los coeficientes. En el nivel de los algoritmos de aprendizaje, el compromiso entre sesgo y varianza explica por qué los modelos con más capacidad tienden a sobreajustarse.
+
+\subsection{Remuestreo bootstrap}
+La idea intuitiva del bootstrap es sencilla: si la muestra observada es una buena aproximación de la población, se puede simular la variabilidad de un estimador extrayendo muestras con reemplazo de la propia muestra. Para un estimador $\hat{\theta}$, se generan $B$ muestras bootstrap de tamaño $n$, se calcula $\hat{\theta}^{*}_b$ en cada una, y el error estándar se aproxima por la desviación estándar de los $B$ valores resultantes. El método no requiere una fórmula cerrada para la distribución del estimador (Hastie et al., 2009).
+
+Una propiedad útil es la probabilidad de que una observación concreta aparezca en una muestra bootstrap. Esa probabilidad es $1-(1-\tfrac{1}{n})^n$, que converge a $1-e^{-1}\approx 0.632$ cuando $n$ crece. Por ello, cada muestra bootstrap contiene en promedio cerca de 63\% de las observaciones distintas, y el resto se repite. Esta cifra es la que se menciona en la Sección~\ref{sec:ml} para el bagging.
+
+\textit{Ejemplo ilustrativo.} Con $n=5$, la probabilidad de que una observación aparezca al menos una vez es $1-(4/5)^5\approx 0.672$.
+
+El bootstrap no se usa como herramienta de inferencia en las tablas de la tesis, pero sí aparece dentro del algoritmo de Random Forest: el estimador de sklearn usa muestras bootstrap por defecto, como se explica en la Sección~\ref{sec:ml}. Por ello es parte del código aunque no sea una prueba reportada.
+
+\subsection{Contrastes de hipótesis, p-valor y errores de tipo I y II}
+Un contraste de hipótesis compara dos afirmaciones sobre un parámetro: la hipótesis nula $H_0$, que representa el estado de referencia, y la alternativa $H_1$. Se calcula un estadístico de prueba $T$ y su p-valor, que es la probabilidad, bajo $H_0$, de observar un valor de $T$ al menos tan extremo como el obtenido. Un p-valor pequeño indica que el dato es poco compatible con $H_0$; no indica la probabilidad de que $H_0$ sea verdadera (Casella y Berger, 2002).
+
+Los dos tipos de error se definen como
+\begin{equation}
+\alpha=P(\text{rechazar } H_0 \mid H_0 \text{ verdadera}), \qquad \beta=P(\text{no rechazar } H_0 \mid H_1 \text{ verdadera})
+\label{eq:errores_tipo}
+\end{equation}
+El error de tipo I, de nivel $\alpha$, consiste en rechazar una hipótesis verdadera. El error de tipo II, de probabilidad $\beta$, consiste en no detectar un efecto que existe. La potencia del contraste es $1-\beta$. Ambos errores se relacionan con el tamaño muestral: con más observaciones, la potencia aumenta para un mismo $\alpha$.
+
+\textit{Ejemplo ilustrativo.} Para una prueba z bilateral con $\alpha=0.05$, el valor crítico es $1.96$. Si el estadístico observado es $2.4$, el p-valor es $2(1-\Phi(2.4))\approx 0.016$, y se rechaza $H_0$ al nivel de 5\%.
+
+En la tesis, la comparación de desempeño entre modelos se presenta de forma descriptiva, con métricas de error sobre el conjunto de prueba, y no mediante un contraste formal. Cuando se comparan muchos modelos o muchas configuraciones, la probabilidad de encontrar un falso efecto significativo por azar crece; por ello la interpretación de diferencias pequeñas en métricas debe ser cautelosa, como se discute en la Sección~\ref{sec:limitaciones_marco}.
+
+\subsection{Álgebra lineal mínima: vectores, matrices y mínimos cuadrados}
+Una observación se representa como un vector $\mathbf{x}_i\in\mathbb{R}^p$, y el conjunto de observaciones como una matriz de diseño $X\in\mathbb{R}^{n\times p}$, cuya fila $i$ es $\mathbf{x}_i^\top$. La norma euclidiana de un vector es $\|\mathbf{v}\|=\sqrt{\mathbf{v}^\top\mathbf{v}}$. El problema de mínimos cuadrados ordinarios busca el vector de coeficientes que minimiza la suma de errores cuadráticos:
+\begin{equation}
+\hat{\boldsymbol{\beta}} = \arg\min_{\boldsymbol{\beta}}\|\mathbf{y}-X\boldsymbol{\beta}\|^2 = (X^\top X)^{-1}X^\top\mathbf{y}
+\label{eq:mco}
+\end{equation}
+La solución cerrada exige que $X^\top X$ sea invertible. Si dos columnas de $X$ son linealmente dependientes, como ocurría con Cetes\_28 y TIIE\_28 en una ejecución anterior con series sintéticas, la matriz es singular y los coeficientes no se identifican. Esta es la base algebraica de la colinealidad perfecta que se discute en la Sección~\ref{sec:limitaciones_macro}.
+
+\subsection{Coeficiente de determinación, multicolinealidad y factor de inflación de varianza}
+El coeficiente de determinación compara la variabilidad que el modelo deja sin explicar con la variabilidad total de la variable dependiente:
+\begin{equation}
+R^2 = 1-\frac{\text{SCE}}{\text{SCT}}=1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2}, \qquad \bar{R}^2 = 1-(1-R^2)\frac{n-1}{n-p-1}
+\label{eq:r2}
+\end{equation}
+donde $\bar{R}^2$ es el $R^2$ ajustado, que penaliza la inclusión de variables adicionales. Un $R^2$ alto no garantiza un buen modelo: aumenta casi siempre al añadir regresores, aunque estos no tengan poder predictivo fuera de muestra (Hastie et al., 2009).
+
+La multicolinealidad ocurre cuando una columna de la matriz de diseño se aproxima a una combinación lineal de las demás. Su magnitud se resume con el factor de inflación de varianza (VIF), definido para el regresor $j$ como
+\begin{equation}
+\text{VIF}_j=\frac{1}{1-R_j^2}
+\label{eq:vif}
+\end{equation}
+donde $R_j^2$ es el $R^2$ de la regresión de $x_j$ sobre los demás regresores. La varianza del coeficiente $\hat{\beta}_j$ se multiplica por el VIF respecto al caso sin correlación. Valores de 5 o 10 se usan como reglas empíricas de alerta, pero no son umbrales teóricos (Wooldridge, 2010).
+
+\textit{Ejemplo ilustrativo.} Si $R_j^2=0.90$, el VIF es $10$; si $R_j^2=0.99$, el VIF es $100$. Cuando $R_j^2=1$, el VIF es infinito y el coeficiente no se identifica. Esa es exactamente la situación de dos series relacionadas por una identidad determinista.
+
+En la tesis, el VIF es el diagnóstico natural para la pareja Cetes\_28 y TIIE\_28. En una ejecución anterior con series sintéticas la relación exacta implicaba $R_j^2=1$. Con las series oficiales de los resultados, la correlación entre ambas tasas es alta pero no exacta, y el VIF permite cuantificar el problema antes de interpretar coeficientes. En los modelos de árboles, la colinealidad afecta menos la predicción, aunque sí dificulta la atribución de importancia a cada variable, como se analiza en la Sección~\ref{sec:shapley}.
+
+\subsection{Error cuadrático medio como esperanza de pérdida}
+Un predictor $\hat{f}$ se evalúa mediante una función de pérdida $L(y,\hat{f}(\mathbf{x}))$. El error cuadrático medio es la esperanza de la pérdida cuadrática, $\text{ECM}=\mathbb{E}[(Y-\hat{f}(\mathbf{X}))^2]$, y su versión muestral es el promedio de los errores al cuadrado sobre un conjunto de observaciones. Su minimizador poblacional es la esperanza condicional $\mathbb{E}[Y\mid\mathbf{X}]$. Como la raíz cuadrada es estrictamente creciente, minimizar el RMSE sobre un mismo conjunto de validación equivale a minimizar el ECM. Esta equivalencia explica por qué el objetivo de la búsqueda de hiperparámetros, \texttt{neg\_root\_mean\_squared\_error}, selecciona la misma combinación que minimizaría el error cuadrático medio, aunque reporte la escala original de la variable (Hastie et al., 2009).
+
+\subsection{Normalización, estandarización y puntaje z}
+Estandarizar una variable consiste en restarle su media y dividirla entre su desviación estándar, $z=(x-\mu)/\sigma$. La transformación produce variables con media cero y varianza uno, y hace comparables magnitudes que se miden en unidades distintas, como pesos, porcentajes e índices. Una alternativa es la normalización min-max, $(x-\min x)/(\max x-\min x)$, que lleva los valores al intervalo $[0,1]$ pero es más sensible a valores atípicos.
+
+\textit{Ejemplo ilustrativo.} Para los valores de IMOR $(8,12,4)$, la media es $8$ y la desviación estándar poblacional es $\sqrt{32/3}\approx 3.27$. Los puntajes z son $0$, $1.22$ y $-1.22$.
+
+Los parámetros de escala deben estimarse solo con el conjunto de entrenamiento y después aplicarse al de prueba, pues de lo contrario la prueba influye en el entrenamiento, como se explica en la Sección~\ref{sec:prep_datos}. La necesidad de estandarizar depende del modelo. Los métodos de árboles son invariantes a transformaciones monótonas de cada variable, porque solo comparan valores para decidir particiones; los modelos con penalización, como la ridge, dependen de la escala porque la penalización actúa sobre las magnitudes de los coeficientes (Hastie et al., 2009). El código del estudio no estandariza las variables de los modelos de árboles, lo que es consistente con esa invariancia.
+
+\subsection{Optimización: gradiente, convexidad y descenso por gradiente}
+El gradiente de una función $f:\mathbb{R}^p\to\mathbb{R}$ es el vector de sus derivadas parciales, $\nabla f(\boldsymbol{\beta})$, y apunta en la dirección de máximo crecimiento. El método de descenso por gradiente actualiza los parámetros en sentido contrario:
+\begin{equation}
+\boldsymbol{\beta}^{(t+1)} = \boldsymbol{\beta}^{(t)} - \eta\,\nabla f\big(\boldsymbol{\beta}^{(t)}\big)
+\label{eq:descenso}
+\end{equation}
+donde $\eta>0$ es la tasa de aprendizaje. Una función $f$ es convexa si $f(\lambda\mathbf{u}+(1-\lambda)\mathbf{v})\leq \lambda f(\mathbf{u})+(1-\lambda)f(\mathbf{v})$ para todo $\lambda\in[0,1]$. Para funciones convexas y suaves, el descenso por gradiente con $\eta$ suficientemente pequeño converge a un mínimo global. Las pérdidas cuadrática y logística son convexas en los parámetros lineales, lo que da garantías de convergencia que no existen en general en redes neuronales. Esta subsección presenta solo la regla básica; la teoría de convexidad, los métodos estocásticos y los de segundo orden se desarrollan en la Sección~\ref{sec:optimizacion}.
+
+Para el error cuadrático medio, $\nabla_{\boldsymbol{\beta}}\frac{1}{n}\|\mathbf{y}-X\boldsymbol{\beta}\|^2 = -\frac{2}{n}X^\top(\mathbf{y}-X\boldsymbol{\beta})$. La implementación siguiente muestra la regla de actualización para una regresión lineal:
+\begin{lstlisting}[language=Python, caption={Descenso por gradiente para regresión lineal con error cuadrático medio}, label={lst:descenso}]
+import numpy as np
+
+def descenso_gradiente(X, y, eta=0.1, iteraciones=500):
+    beta = np.zeros(X.shape[1])
+    n = X.shape[0]
+    for _ in range(iteraciones):
+        grad = -(2 / n) * X.T @ (y - X @ beta)
+        beta = beta - eta * grad
+    return beta
+\end{lstlisting}
+El mismo principio, aplicado a funciones de pérdida más generales y a la suma de árboles en lugar de coeficientes lineales, es la base del boosting que se describe en la Sección~\ref{sec:boosting}.
+
+\subsection{Regresión logística}\label{sec:logit}
+La regresión logística es el modelo estándar de \textit{credit scoring} y sirve de referencia natural para estimar probabilidades de incumplimiento. Modela el logaritmo de las probabilidades (\textit{log-odds}) como función lineal de las variables:
+\begin{equation}
+\log\frac{P(Y=1\mid\mathbf{x})}{1-P(Y=1\mid\mathbf{x})} = \beta_0 + \boldsymbol{\beta}^\top\mathbf{x}, \qquad P(Y=1\mid\mathbf{x}) = \sigma\big(\beta_0+\boldsymbol{\beta}^\top\mathbf{x}\big)
+\label{eq:logit}
+\end{equation}
+El coeficiente $\beta_j$ tiene una interpretación multiplicativa: un aumento unitario en $x_j$ multiplica las probabilidades de incumplimiento por $e^{\beta_j}$, manteniendo las demás variables constantes. Esta interpretabilidad explica su uso extendido en banca. Su función de pérdida es la entropía cruzada o \textit{log-loss}, $-\frac{1}{n}\sum_i\big[y_i\log p_i+(1-y_i)\log(1-p_i)\big]$, cuyo gradiente con respecto a $\boldsymbol{\beta}$ es $\frac{1}{n}X^\top(\mathbf{p}-\mathbf{y})$. Esta pérdida es convexa, por lo que el ajuste tiene un único óptimo global. En la tesis, la regresión logística aparece como meta-modelo del stacking, en la Ecuación~\eqref{eq:stacking}.
+
+\section{Fundamentos de Programación y Manejo de Datos}\label{sec:fund_prog}
+
+El resultado de un estudio de aprendizaje automático depende tanto de la matemática como de la forma en que se transforman los datos. Esta sección presenta los conceptos de programación que determinan si la evaluación es válida.
+
+\subsection{Python y su ecosistema de bibliotecas}
+Python es un lenguaje de programación de propósito general que se volvió el estándar de facto para el análisis de datos y el aprendizaje automático por la madurez de sus bibliotecas y por la facilidad de prototipado. Sin embargo, el lenguaje en sí no hace el trabajo numérico: las operaciones pesadas se delegan a bibliotecas escritas en C, C++ o Rust. % VERIFICAR: no existe una fuente permitida para el lenguaje Python; se sugiere citar la documentación oficial en la versión final.
+
+NumPy proporciona el tipo de arreglo \texttt{ndarray}, operaciones vectorizadas y álgebra lineal básica. Es la base numérica sobre la que se construyen casi todas las demás bibliotecas (Harris et al., 2020). SciPy agrega funciones de optimización, estadística y álgebra lineal avanzada (Virtanen et al., 2020). pandas introduce el objeto \texttt{DataFrame}, una tabla con columnas etiquetadas y tipos por columna, que es el formato de trabajo para la mayor parte del análisis exploratorio (McKinney, 2010).
+
+Polars es una biblioteca de manipulación de tablas que se usa en la tesis para la ingeniería de variables, con expresiones que operan sobre columnas completas. DuckDB es un motor analítico embebido que ejecuta consultas SQL directamente sobre archivos Parquet y sobre tablas en memoria (Raasveldt y Mühleisen, 2019). % VERIFICAR: no existe una fuente permitida para Polars; se sugiere citar su documentación oficial.
+
+Para el modelado se usan scikit-learn, que ofrece estimadores, particionadores de validación cruzada y pipelines bajo una interfaz común (Pedregosa et al., 2011); XGBoost (Chen y Guestrin, 2016) y LightGBM (Ke et al., 2017), ambas implementaciones de boosting; statsmodels, para modelos ARIMA y SARIMAX con estimación por máxima verosimilitud (Seabold y Perktold, 2010); SHAP, para explicar predicciones (Lundberg y Lee, 2017); imbalanced-learn, para remuestreo de clases minoritarias (Lemaître et al., 2017); matplotlib, para figuras (Hunter, 2007); y requests, para las llamadas HTTP a la API de Banco de México. % VERIFICAR: requests no tiene fuente permitida; se sugiere citar su documentación oficial.
+
+\textit{Por qué importa el ecosistema.} Cada biblioteca tiene supuestos sobre los tipos de datos, el orden de las filas y la forma de los valores faltantes. Un error frecuente es mezclar una biblioteca que espera índices de tiempo con otra que los ignora, lo que produce resultados aparentemente correctos pero incorrectos en el fondo. Por eso el capítulo define en esta sección qué papel cumple cada herramienta en el pipeline.
+
+\subsection{Tipos de datos y valores faltantes}
+Cada columna de una tabla tiene un tipo de dato: entero, flotante, cadena de caracteres, fecha o booleano. El tipo determina qué operaciones son válidas. Sumar fechas no tiene sentido, pero restarlas sí, y comparar cadenas no equivale a comparar números aunque ambas se vean parecidas. En el archivo de datos utilizado, como lo muestra la limpieza del código, algunas cifras aparecen con etiquetas textuales como \texttt{n.a.} (no aplica) o \texttt{n.d.} (no disponible), por lo que una columna numérica puede llegar al análisis como texto.
+
+Un valor faltante es la ausencia de una observación. En Python se representa como \texttt{NaN} en tipos flotantes y como \texttt{NULL} en SQL. Los valores faltantes no son ceros: un cero indica que la cantidad existe y vale cero, mientras que un valor faltante indica que no se conoce. Confundirlos produce estimaciones sesgadas, por ejemplo al promediar una cartera vencida en la que las entidades sin dato se cuentan como cero.
+
+El código del estudio realiza una limpieza explícita antes de cualquier cálculo. Convierte cada cadena a texto sin espacios, reemplaza las etiquetas \texttt{n.a.}, \texttt{n.d.} y guiones por valores nulos, y después intenta convertir el resultado a número. Esta secuencia evita que una cadena como \texttt{n.a.} se convierta silenciosamente en cero o en error.
+
+\subsection{Formato Parquet frente a CSV y Excel}
+Un archivo CSV almacena texto separado por comas, una fila por registro. Es simple y legible, pero no guarda tipos de dato: cada lectura debe volver a inferirlos, lo que es lento y puede equivocarse, por ejemplo al tratar un código de institución como número. Excel tiene límites de tamaño de hoja y de capacidad, y está pensado para la edición manual más que para el procesamiento masivo.
+
+Parquet es un formato binario y columnar. Guarda los valores de cada columna de forma contigua, lo que permite leer solo las columnas necesarias y comprimir cada columna con técnicas adecuadas a su tipo. Además, almacena el esquema con los tipos de cada columna dentro del propio archivo (Raasveldt y Mühleisen, 2019). En un panel con muchas columnas, leer solo las que se usan en un modelo reduce el tiempo y la memoria. Por esa razón el archivo base de la tesis, \texttt{sofipo\_base\_completa.parquet}, se consulta directamente desde DuckDB sin pasar por Excel ni por CSV. % VERIFICAR: no existe una fuente permitida específica para el formato Parquet; las propiedades descritas deben confirmarse con su especificación oficial.
+
+\subsection{SQL, funciones de ventana y DuckDB}
+SQL (\textit{Structured Query Language}) es el lenguaje declarativo para consultar tablas. Una consulta describe el resultado deseado y el motor decide cómo calcularlo. Las funciones de ventana calculan una agregación para cada fila usando un conjunto de filas relacionadas, sin colapsar el resultado en una sola fila. La cláusula \texttt{OVER (PARTITION BY ...)} define ese conjunto: con \texttt{PARTITION BY Nombre}, cada fila recibe la agregación de todas las filas de su misma institución (Raasveldt y Mühleisen, 2019).
+
+\texttt{COALESCE(a, b)} devuelve el primer argumento que no sea nulo. \texttt{NULLIF(a, b)} devuelve nulo cuando $a=b$ y en otro caso devuelve $a$; se usa para convertir etiquetas como \texttt{n.a.} en nulos. \texttt{TRY\_CAST(x AS DOUBLE)} intenta convertir $x$ a número y devuelve nulo si la conversión falla, en lugar de detener la consulta. Las tres funciones se combinan en el código de limpieza de datos.
+
+La Tabla~\ref{tab:sql_ejemplo} ilustra la imputación por promedio de institución con datos ficticios. El valor faltante de la institución A en el segundo trimestre se reemplaza con el promedio de todos sus trimestres.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Ejemplo ilustrativo de imputación con COALESCE y AVG OVER (PARTITION BY Nombre)}
+\label{tab:sql_ejemplo}
+\begin{tabular}{llrrr}
+\toprule
+Institución & Periodo & IMOR bruto & Promedio por institución & Valor final \\
+\midrule
+A & 2019-T1 & 4.0 & 5.0 & 4.0 \\
+A & 2019-T2 & NULL & 5.0 & 5.0 \\
+A & 2019-T3 & 6.0 & 5.0 & 6.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textit{Lectura de la tabla.} El promedio de 5.0 usa el valor del tercer trimestre, que es posterior al trimestre imputado. Por eso el procedimiento incorpora información futura y produce fuga de información, como se analiza en la Sección~\ref{sec:imputacion}. La imputación correcta en un panel usaría solo valores hasta el periodo imputado, por ejemplo una media expansiva.
+
+La Tabla~\ref{tab:trycast} muestra el efecto de la limpieza de cadenas antes de la conversión numérica. Los valores con separador de miles no se convierten a número con \texttt{TRY\_CAST} sin un tratamiento previo, lo que obliga a revisar el formato de origen.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Limpieza y conversión de cadenas con NULLIF y TRY\_CAST (ilustrativo)}
+\label{tab:trycast}
+\begin{tabular}{lll}
+\toprule
+Cadena original & Después de NULLIF & Resultado de TRY\_CAST \\
+\midrule
+n.a. & NULL & NULL \\
+12.5 & 12.5 & 12.5 \\
+- & NULL & NULL \\
+1,250 & 1,250 & NULL \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+En DuckDB, la consulta del código se ejecuta sobre el archivo Parquet y produce una tabla temporal, que luego se transfiere a Polars. El punto importante es que la limpieza ocurre en el motor de consulta y no en un bucle de Python, lo que reduce el costo de memoria y evita copiar datos sin necesidad.
+
+\subsection{DataFrames y proceso ETL}
+Un \textit{DataFrame} es una estructura bidimensional con filas y columnas etiquetadas, y tipos por columna. Es el objeto central del análisis de datos. Sus operaciones básicas son filtrar filas, seleccionar columnas, agrupar, unir tablas y calcular nuevas columnas.
+
+El proceso ETL (extraer, transformar y cargar) describe el flujo de datos desde la fuente hasta el modelo. La extracción obtiene los datos de un archivo o de una API. La transformación limpia, tipifica, une y construye variables. La carga deja el resultado en el formato que consume el modelo. En la tesis, el ETL tiene tres componentes claros: la extracción del Parquet con DuckDB, la transformación de variables con Polars y pandas, y la extracción de series macroeconómicas desde la API de Banco de México (McKinney, 2010). Un ETL reproducible debe ser determinista: ejecutarlo dos veces con los mismos insumos debe producir el mismo resultado.
+
+Una unión entre el panel y las series macroeconómicas requiere que las llaves coincidan exactamente. En el código, la unión se hace por la columna de periodo contra el índice de fecha de las series macro. Si las fechas no coinciden, la unión produce valores faltantes, que deben detectarse explícitamente, como se describe en la Sección~\ref{sec:macro}.
+
+\subsection{API REST y formato JSON}
+Una API REST es una interfaz que permite consultar recursos mediante solicitudes HTTP. La solicitud indica el recurso en la dirección (\textit{URL}), el método (en este caso, \texttt{GET}) y los encabezados, que pueden incluir credenciales. La respuesta es un documento en JSON (\textit{JavaScript Object Notation}), un formato de texto con pares clave-valor, listas y valores anidados.
+
+La API SIE de Banco de México publica series de tiempo con una estructura de ese tipo: un objeto \texttt{bmx}, una lista de \texttt{series}, y dentro de cada serie un identificador, \texttt{idSerie}, y una lista \texttt{datos} con pares de fecha y valor. Las fechas llegan en formato día/mes/año y los valores llegan como texto, por lo que el código las convierte con \texttt{pd.to\_datetime} y \texttt{pd.to\_numeric}. La opción \texttt{errors="coerce"} transforma en nulo cualquier valor no numérico en lugar de detener la ejecución. Las series se descargan con el identificador de cada serie que el código asocia con un nombre de variable (Banco de México, s. f.).
+
+La autenticación se hace mediante un token en un encabezado de la solicitud. Un token es una credencial: quien lo posee puede consultar la API con su cuenta. Por ello, la práctica adecuada es leerlo de una variable de entorno y nunca escribirlo en el código fuente ni en la documentación del proyecto, ya que un archivo compartido lo expone. La versión del script que se analiza en este capítulo contiene un valor de respaldo escrito en el código; ese valor debe retirarse y la credencial debe renovarse antes de compartir el proyecto.
+
+\subsection{Datos tabulares y formato largo de panel}
+Un conjunto de datos tabular tiene una fila por observación y una columna por variable. En un panel, la forma natural es el formato largo: cada fila corresponde a una pareja (institución, periodo). Un error frecuente consiste en usar formato ancho, con una columna por periodo, y luego aplicar operaciones que suponen orden temporal dentro de cada institución. El formato largo, ordenado primero por institución y después por periodo, hace explícito el orden temporal que las operaciones de rezago requieren.
+
+\subsection{Rezagos, medias móviles y objetivo futuro en código}
+Las operaciones de rezago y de ventana deben ejecutarse por grupo. Si se calculan sobre todo el panel sin agrupar, un rezago puede tomar el valor de otra institución, y una media móvil puede mezclar periodos de entidades distintas. El siguiente ejemplo, con nombres de columna ilustrativos, muestra la construcción correcta:
+\begin{lstlisting}[language=Python, caption={Construcción de rezagos, medias móviles y objetivo futuro dentro de cada institución}, label={lst:rezagos}]
+import pandas as pd
+
+df = pd.read_parquet("sofipo_base_completa.parquet")
+df = df.sort_values(["institucion", "periodo"])
+
+df["IMOR_lag1"] = df.groupby("institucion")["IMOR"].shift(1)
+
+df["IMOR_ma4"] = df.groupby("institucion")["IMOR"].transform(
+    lambda s: s.rolling(window=4, min_periods=4).mean()
+)
+
+df["IMOR_futuro"] = df.groupby("institucion")["IMOR"].shift(-1)
+\end{lstlisting}
+El desplazamiento hacia atrás (\texttt{shift(-1)}) solo debe usarse para construir la variable objetivo; si se usa como predictor, se incorpora información futura y se produce fuga de información, el problema que se analiza en la Sección~\ref{sec:prep_datos}.
+
+\subsection{Pipelines: encapsular el preprocesamiento}
+Un \textit{pipeline} encadena las transformaciones y el modelo de manera que cada paso se ajuste solo con los datos de entrenamiento. Esto evita un error sutil: si la imputación o la normalización se calculan con todo el conjunto de datos antes de dividirlo, la prueba influye en el entrenamiento. El siguiente ejemplo muestra la estructura correcta en scikit-learn:
+\begin{lstlisting}[language=Python, caption={Pipeline en el que la imputación y la escala se ajustan solo con el conjunto de entrenamiento}, label={lst:pipeline}]
+from sklearn.pipeline import make_pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+
+modelo = make_pipeline(
+    SimpleImputer(strategy="mean"),
+    StandardScaler(),
+    RandomForestRegressor(n_estimators=300, random_state=42),
+)
+
+modelo.fit(X_train, y_train)
+y_pred = modelo.predict(X_test)
+\end{lstlisting}
+El código del estudio imputa con el promedio por institución sobre toda la historia, lo que no equivale a este esquema; la diferencia se analiza en la Sección~\ref{sec:imputacion}.
+
+\subsection{Reproducibilidad, búsqueda de hiperparámetros y costo computacional}
+Los modelos con componentes aleatorios, como el muestreo bootstrap o la selección aleatoria de variables, producen resultados distintos en cada ejecución salvo que se fije una semilla (\texttt{random\_state}). Fijar la semilla es necesario para que los resultados de la tesis puedan reproducirse. Una semilla es el valor inicial de un generador pseudoaleatorio: con la misma semilla, el generador produce la misma secuencia de números. El código fija la semilla en dos lugares. El primero es la semilla global de NumPy, que controla los generadores que no reciben una semilla propia. El segundo, y más importante, es el argumento \texttt{random\_state=42} de cada estimador y de cada partición, lo que garantiza que cada componente aleatorio, como las muestras bootstrap del Random Forest o las instancias sintéticas de SMOTE, use una secuencia determinista. Una semilla fija no elimina la variabilidad muestral; solo hace que una ejecución concreta sea repetible. La robustez de un resultado se evalúa variando la semilla, algo que el estudio no reporta.
+
+La búsqueda en cuadrícula (\textit{grid search}) evalúa todas las combinaciones de una malla de hiperparámetros con validación cruzada. Si la malla tiene $H$ combinaciones y la validación usa $K$ pliegues, se ajustan $H\times K$ modelos. Este número crece multiplicativamente con cada hiperparámetro nuevo, por lo que el costo computacional debe planearse junto con el diseño experimental. Para un árbol, el ajuste de una partición sobre $n$ observaciones y $p$ variables requiere, en el caso ingenuo, del orden de $p\,n\log n$ operaciones por nivel, lo que explica por qué los métodos de histogramas de LightGBM reducen el tiempo de entrenamiento (Ke et al., 2017).
+
+\subsection{Codificación de etiquetas y variables nominales}
+Muchos algoritmos requieren números, pero algunas variables son categorías: el nombre de una institución, un tipo de producto o una región. La codificación convierte cada categoría en un entero. El codificador \texttt{LabelEncoder} de scikit-learn asigna enteros consecutivos a las categorías en orden alfabético de sus etiquetas (Pedregosa et al., 2011).
+
+Un error conceptual frecuente es tratar esos enteros como si tuvieran orden y magnitud. Si una institución se codifica como 7 y otra como 3, la primera no es ``más'' que la segunda en ningún sentido económico. El número solo identifica a la categoría. En el código, la variable \texttt{Nombre\_ID} se construye con este codificador y se usa como predictor en el modelo multi-objetivo. Un árbol puede dividir ese identificador en intervalos arbitrarios y capturar, sin querer, una relación espuria entre el orden alfabético de los nombres y el riesgo. Por eso el identificador debe interpretarse como un código de institución, no como una variable ordinal. Una codificación más adecuada sería una codificación one-hot, que crea una columna binaria por categoría, o la estimación de efectos fijos por institución (Hastie et al., 2009).
+
+\subsection{Evaluación perezosa, vectorización y ciclos}
+Una evaluación ansiosa (\textit{eager}) ejecuta cada operación en cuanto se escribe. Una evaluación perezosa (\textit{lazy}) construye primero un plan de operaciones y lo ejecuta al final, lo que permite al motor optimizarlo, por ejemplo eliminando columnas que no se usan. Polars soporta ambas modalidades; el código de la tesis usa la modalidad ansiosa de \texttt{DataFrame} y el motor de DuckDB para la consulta inicial.
+
+La vectorización consiste en expresar una operación sobre arreglos completos en lugar de un ciclo elemento por elemento. Las bibliotecas numéricas ejecutan esas operaciones en código compilado, sin el costo de interpretar cada iteración del lenguaje (Harris et al., 2020). El siguiente código calcula la suma de cuadrados de un millón de valores de dos formas equivalentes:
+
+\begin{lstlisting}[language=Python, caption={Suma de cuadrados con ciclo explícito y con operación vectorizada}, label={lst:vectorizacion}]
+import numpy as np
+
+x = np.random.default_rng(42).normal(size=1000000)
+
+suma_ciclo = 0.0
+for v in x:
+    suma_ciclo += v * v
+
+suma_vec = np.sum(x * x)
+\end{lstlisting}
+
+Ambos resultados coinciden, pero la versión vectorizada suele ser varios órdenes de magnitud más rápida. La diferencia importa en el pipeline porque las operaciones de rezago y de ventana se aplican sobre todo el panel. Esas operaciones se expresan por grupo (\texttt{groupby}, \texttt{over}, \texttt{shift}) para que el cálculo recorra cada columna en bloque. Un ciclo explícito sobre las filas del panel, en cambio, sería lento y propenso a errores de agrupación.
+
+\subsection{Complejidad computacional y notación O grande}
+La complejidad de un algoritmo describe cómo crece su costo cuando crece la entrada. La notación $O(\cdot)$ indica una cota superior asintótica: $f(n)=O(g(n))$ si existen constantes $c$ y $n_0$ tales que $f(n)\leq c\,g(n)$ para $n\geq n_0$ (Cormen et al., 2022). Ignora constantes y términos de menor orden, por lo que sirve para comparar algoritmos, no para predecir tiempos exactos.
+
+Algunas complejidades que aparecen en la tesis son las siguientes. Ordenar $n$ valores cuesta $O(n\log n)$, y los árboles de decisión lo usan para ordenar cada variable antes de buscar la mejor partición (Cormen et al., 2022). Una búsqueda lineal sobre $n$ observaciones cuesta $O(n)$. Una partición de un nodo con $p$ variables y $n$ observaciones cuesta, en el caso ingenuo, del orden de $p\,n\log n$ operaciones. El histograma de LightGBM reduce esa cantidad al agrupar valores continuos en un número fijo de intervalos (Ke et al., 2017). Un ensamble de $B$ árboles multiplica el costo de un árbol por $B$, y una búsqueda en cuadrícula de $H$ combinaciones con $K$ pliegues multiplica el costo de entrenamiento por $H\times K$.
+
+La Sección~\ref{sec:optimizacion} aplica esta notación al costo de la búsqueda de hiperparámetros, al filtro de Kalman y al cálculo en paralelo.
+
+\subsection{Visualización con matplotlib y resolución en puntos por pulgada}
+matplotlib es la biblioteca de gráficas que se usa para todas las figuras de la tesis (Hunter, 2007). Una figura se define en pulgadas, por ejemplo \texttt{figsize=(7, 4.5)}, y se guarda en un archivo de mapa de bits cuya resolución se expresa en puntos por pulgada (dpi). Un punto por pulgada es la densidad de píxeles de la imagen impresa: a mayor dpi, más píxeles y mayor nitidez al ampliar. Una figura de 7 pulgadas de ancho a 350 dpi tiene $7\times 350=2450$ píxeles de ancho.
+
+El código fija la resolución de todas las figuras a 350 dpi mediante \texttt{figure.dpi} y \texttt{savefig.dpi}. La resolución de 350 dpi se eligió para impresión académica: supera el valor de 300 dpi que suele usarse como referencia editorial y deja un margen para que el texto y los puntos de las gráficas se distingan al imprimir. % VERIFICAR: requisito de resolución de las imágenes exigido por la editorial o por el reglamento de tesis de la institución; el valor de 300 dpi como referencia editorial no se verificó contra una fuente permitida.
+
+La configuración del código también fija el tamaño de fuente en 10 puntos y activa una rejilla de baja opacidad. Estas decisiones afectan la legibilidad de las figuras en la versión impresa, por lo que deben revisarse junto con el tamaño final de cada figura en el documento.
+
+\section{Estados Financieros y Variables Contables de una SOFIPO}\label{sec:estados_financieros}
+
+Esta sección explica el significado económico de las variables contables que alimentan el panel. Su propósito es que cada columna del archivo de datos pueda leerse como una partida de una cuenta real, con su origen, su unidad de medida y su relación con las demás. La lectura de los estados financieros es el punto de partida de cualquier análisis de riesgo de una institución de crédito, porque de ellos se derivan la morosidad, la rentabilidad, la solvencia y la sensibilidad del capital a pérdidas.
+
+\subsection{Balance general: activo, pasivo y capital contable}
+El balance general es un estado de situación financiera: muestra qué posee una institución (activo), qué debe (pasivo) y qué parte de sus recursos pertenece a los accionistas (capital contable) en una fecha determinada. Su estructura se rige por la ecuación contable fundamental:
+\begin{equation}
+\text{Activo} = \text{Pasivo} + \text{Capital contable}
+\label{eq:balance}
+\end{equation}
+La igualdad se cumple por construcción: cada operación registra un cargo y un abono por el mismo monto, de modo que el balance siempre cuadra. Un balance es un estado de saldos, es decir, una fotografía en un instante, a diferencia del estado de resultados, que acumula flujos durante un periodo.
+
+En una SOFIPO que capta recursos del público y otorga crédito, el activo está dominado por la cartera de crédito, que se presenta neta de estimaciones preventivas. Si $CB$ es la cartera bruta y $EPR$ son las estimaciones constituidas, la cartera neta es
+\begin{equation}
+\text{Cartera neta} = CB - \text{EPR}
+\label{eq:cartera_neta}
+\end{equation}
+El resto del activo incluye efectivo, inversiones en valores y otros activos. El pasivo se compone principalmente de la captación tradicional, es decir, los depósitos de ahorradores a la vista y a plazo, y de préstamos de otras instituciones. El capital contable recoge el capital social aportado, las reservas de capital, los resultados de ejercicios anteriores y el resultado del ejercicio en curso.
+
+La importancia del balance para la tesis es que el capital contable es la primera línea de defensa frente a pérdidas. Si la institución pierde valor en su cartera, la diferencia debe absorberse con capital, y el nivel de capital determina cuánto riesgo puede asumir. Esta relación se refleja en el indicador de capitalización que se analiza en la Sección~\ref{sec:riesgo}.
+
+\subsection{Estado de resultados: estructura y flujo línea por línea}
+El estado de resultados muestra los ingresos y gastos de un periodo y termina en la utilidad o pérdida neta. Su lógica es de cascada: cada subtotal es el punto de partida de la siguiente etapa. Para una institución financiera, la estructura típica, que se resume aquí con la nomenclatura que la CNBV utiliza de forma general (Comisión Nacional Bancaria y de Valores, s. f.), es la siguiente:
+\begin{enumerate}[leftmargin=2em]
+\item Ingresos por intereses. Intereses devengados por la cartera de crédito y por las inversiones.
+\item Gastos por intereses. Intereses pagados a los ahorradores y a los acreedores por los recursos captados.
+\item Margen financiero. Diferencia entre ingresos y gastos por intereses.
+\item Estimaciones preventivas para riesgos crediticios. Gasto del periodo para constituir o incrementar las reservas por pérdidas esperadas.
+\item Margen financiero ajustado por riesgos crediticios. Margen financiero menos estimaciones.
+\item Comisiones y tarifas, cobradas y pagadas, con su resultado neto.
+\item Resultado por intermediación. Efecto de valuar instrumentos financieros a valor razonable.
+\item Otros ingresos y egresos de la operación.
+\item Gastos de administración y promoción. Costos operativos, de personal, de tecnología y de promoción.
+\item Resultado antes de impuestos.
+\item Impuestos a la utilidad.
+\item Resultado neto.
+\end{enumerate}
+En forma compacta, con $II$ para ingresos por intereses, $GI$ para gastos por intereses, $EPR$ para estimaciones del periodo, $CN$ para comisiones netas, $RI$ para resultado por intermediación, $OI$ para otros ingresos netos, $GAP$ para gastos de administración y promoción e $IMP$ para impuestos, el resultado neto es
+\begin{equation}
+\text{Resultado neto} = \underbrace{(II-GI)}_{\text{margen financiero}} - \text{EPR} + CN + RI + OI - GAP - \text{IMP}
+\label{eq:estado_resultados}
+\end{equation}
+La forma de la Ecuación~\eqref{eq:estado_resultados} muestra el mecanismo central del estudio. Cada peso de estimaciones adicional reduce el resultado neto en la misma cantidad antes de impuestos. Como la pérdida se resta del resultado, el capital contable también disminuye, y la capacidad de absorber futuras pérdidas se reduce.
+
+\textit{Razón del orden.} El margen financiero mide la rentabilidad básica del negocio de intermediación. Las estimaciones miden el costo del riesgo de crédito en el periodo. Las comisiones y los demás ingresos complementan el margen, y los gastos de administración miden la eficiencia operativa. Presentar el resultado en este orden permite separar la rentabilidad del negocio de la calidad del crédito y del costo de administrar la institución.
+
+\subsection{Partidas usadas en el código y su papel como predictores}
+A continuación se describe cada partida que el código toma de la base de datos. Las definiciones son generales y deben contrastarse con el boletín estadístico de la CNBV, cuyas notas al pie precisan el cálculo de los indicadores.
+
+\textit{Ingresos por intereses.} Mide el flujo de intereses devengados en el periodo por la cartera y las inversiones. Aparece en el estado de resultados como la primera línea y es la fuente principal de ingreso de una SOFIPO. Se usa en la tesis como componente del margen financiero y, de forma indirecta, en el cálculo de la rentabilidad. Es un flujo: su magnitud depende del tamaño de la institución y del periodo, por lo que debe normalizarse para compararlo entre instituciones.
+
+\textit{Gastos por intereses.} Mide el costo de financiar la operación con captación y préstamos. Su nivel depende de las tasas de interés que paga la institución, que a su vez se relacionan con la tasa de referencia del mercado, como se explica en la Sección~\ref{sec:macro}. Se usa en el margen financiero y, junto con los ingresos, define la sensibilidad del negocio a las tasas.
+
+\textit{Margen financiero.} Es la diferencia entre ingresos y gastos por intereses y mide el ingreso neto del negocio de intermediación antes de riesgos. Es el predictor de rentabilidad más directo del panel, porque resume en una sola cifra la relación entre el precio que cobra la institución y el costo que paga por sus recursos.
+
+\textit{Resultado neto.} Es la utilidad o pérdida del periodo después de todas las partidas y de impuestos. Se usa como variable de rentabilidad final. En el código se combina con el activo total para formar el ROA trimestral de la Ecuación~\eqref{eq:roa}, y con sus rezagos para estimar la trayectoria de la utilidad. Su relación con el IMOR se describe en el vínculo causal de esta sección.
+
+\textit{Gastos de administración y promoción.} Mide los costos operativos de la institución, incluidos personal, tecnología, instalaciones y promoción comercial. Es un indicador de eficiencia cuando se compara con el ingreso, y de escala cuando se compara con el activo. En el código aparece como predictor, por lo que el modelo puede aprovechar la relación entre estructura de costos y riesgo.
+
+\textit{Estimaciones preventivas para riesgos crediticios constituidas.} Es el saldo de reservas que la institución tiene registrado para cubrir pérdidas de la cartera. Es un saldo, no un flujo. Su magnitud crece con la morosidad y con la política de provisionamiento. % VERIFICAR: la nomenclatura exacta de esta partida en el boletín de la CNBV y su relación con el gasto de estimaciones del estado de resultados no se verificó contra la fuente oficial.
+
+\textit{Requerimiento de estimaciones preventivas para riesgos crediticios.} Es el monto de reserva que la normativa exige a la institución, calculado con la metodología regulatoria a partir de la cartera y su calificación. La diferencia entre lo constituido y lo requerido indica si la institución cumple el mínimo regulatorio de reservas. % VERIFICAR: definición exacta del requerimiento de estimaciones en el boletín de la CNBV para SOFIPOs; no se verificó contra la normativa vigente.
+
+\textit{Captación tradicional.} Son los recursos que el público deposita en la institución a la vista y a plazo. Es la principal fuente de fondeo de una SOFIPO y, a diferencia de los préstamos interbancarios, depende de la confianza de los ahorradores. Su nivel y su variación indican la capacidad de la institución para fondear su crecimiento y la sensibilidad de su liquidez a la tasa de interés que paga.
+
+\textit{Activo total.} Es la suma de todos los recursos controlados por la institución. Se usa como denominador de los indicadores de rentabilidad y de riesgo, para expresar cada flujo como proporción del tamaño de la institución. En el código, el activo total es también el denominador de la razón entre cartera vigente y activo.
+
+\textit{Cartera vigente y cartera vencida.} La cartera vigente es el saldo de créditos cuyos pagos están al corriente. La cartera vencida es el saldo de créditos con atrasos en sus pagos, conforme a los criterios de clasificación de la CNBV. Ambas son saldos de la misma fecha y se usan para construir el IMOR, la morosidad y la razón de cartera a activo.
+
+\textit{Tasa implícita.} Es una tasa de rendimiento calculada por la institución a partir de sus ingresos y de su base de cálculo, por lo que resume el precio efectivo del crédito. Su uso como predictor se justifica porque captura el precio del crédito, que se relaciona con la selección de clientes y con la morosidad futura (Stiglitz y Weiss, 1981). % VERIFICAR: la definición exacta de la tasa implícita en la nota del boletín de la CNBV, incluida su base de cálculo y su anualización, no se verificó contra la fuente oficial.
+
+\textit{Nivel de capitalización (NICAP).} Es la razón entre el capital neto y los requerimientos de capital por riesgo, expresada en porcentaje. Su definición formal aparece en la Ecuación~\eqref{eq:nicap}. Se usa como variable objetivo en el modelo multi-objetivo y como predictor de la siguiente etapa.
+\subsection{Indicadores de rentabilidad, eficiencia, riesgo y apalancamiento}
+Las partidas contables se combinan en indicadores que permiten comparar instituciones de distinto tamaño. Un indicador es una razón entre dos cantidades, y la razón es la forma de quitar el efecto del tamaño. Un banco con utilidad de 10 millones no es necesariamente más rentable que una SOFIPO con utilidad de 1 millón, porque la primera puede tener un activo diez veces mayor.
+
+El rendimiento sobre activos (ROA) mide cuánta utilidad genera cada peso de activo. El rendimiento sobre capital (ROE) mide cuánta utilidad genera cada peso aportado por los accionistas. Con $RN$ el resultado neto y $\bar{A}$ y $\bar{K}$ los promedios del activo total y del capital contable del periodo,
+\begin{equation}
+\text{ROA}=\frac{RN}{\bar{A}}, \qquad \text{ROE}=\frac{RN}{\bar{K}}
+\label{eq:roa}
+\end{equation}
+La definición con promedios es la usual en análisis financiero, porque el flujo del periodo se relaciona con el saldo que existió durante todo el periodo y no solo al cierre. El código del estudio usa en cambio el activo total al cierre del trimestre, por lo que su ROA es una aproximación trimestral, sin anualizar, y difiere de la definición con promedios cuando el activo cambia de forma importante dentro del periodo. % VERIFICAR: si las cifras de flujo del boletín de la CNBV son trimestrales o acumuladas al año, lo que determina si el ROA del código es trimestral o acumulado; no se verificó contra la fuente oficial.
+
+El margen financiero sobre activos mide el ingreso básico de intermediación por unidad de activo, y la razón de eficiencia mide cuánto del ingreso se consume en gastos de administración:
+\begin{equation}
+\text{Margen financiero sobre activos}=\frac{MF}{\bar{A}}, \qquad \text{Eficiencia}=\frac{GAP}{IN}
+\label{eq:margen_activo}
+\end{equation}
+donde $IN=MF+CN+RI+OI$ son los ingresos netos de operación antes de estimaciones. Una razón de eficiencia menor indica que la institución gasta menos por cada peso de ingreso. Se usa la razón con ingresos netos y no con ingresos brutos por intereses para evitar que el costo de fondeo se cuente dos veces.
+
+El costo de riesgo mide la carga anual de estimaciones sobre la cartera, y el apalancamiento mide cuántas veces el activo excede al capital:
+\begin{equation}
+\text{Costo de riesgo}=\frac{\text{EPR}}{CB}, \qquad \text{Apalancamiento}=\frac{\bar{A}}{\bar{K}}
+\label{eq:costo_riesgo}
+\end{equation}
+El costo de riesgo debe anualizarse si las estimaciones son trimestrales. El apalancamiento es el inverso de la razón de capital a activo y determina cuánto se amplifica una pérdida sobre el activo para llegar al capital. Un apalancamiento de 12.5 significa que una pérdida de 1\% del activo consume el 12.5\% del capital.
+
+La identidad de DuPont descompone el ROE en tres factores: margen neto, rotación del activo y apalancamiento. Con $IN$ como ingreso neto de operación,
+\begin{equation}
+\text{ROE}=\underbrace{\frac{RN}{IN}}_{\text{margen neto}}\times\underbrace{\frac{IN}{\bar{A}}}_{\text{rotación del activo}}\times\underbrace{\frac{\bar{A}}{\bar{K}}}_{\text{apalancamiento}}
+\label{eq:dupont}
+\end{equation}
+La igualdad es algebraica: los términos $IN$ y $\bar{A}$ se cancelan. Su utilidad es interpretativa. Un ROE alto puede provenir de un margen neto alto, de una rotación elevada o de un apalancamiento alto, y cada origen implica un riesgo distinto. Un ROE sostenido por apalancamiento es más vulnerable a pérdidas moderadas que uno sostenido por margen. % VERIFICAR: referencia bibliográfica específica para el análisis DuPont en la práctica financiera; la identidad es algebraica y se verifica directamente, pero la referencia no está incluida en las fuentes permitidas.
+
+\textit{Ejemplo ilustrativo completo.} La Tabla~\ref{tab:estado_ilustrativo} recorre el estado de resultados de una SOFIPO hipotética, con cifras en miles de pesos. Los saldos de cierre y el capital se presentan en la Tabla~\ref{tab:balance_ilustrativo}. Los indicadores se calculan después en la Tabla~\ref{tab:indicadores_ilustrativos}, suponiendo que las cifras de flujo corresponden a un trimestre y que el activo promedio es igual al de cierre.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Estado de resultados ilustrativo de una SOFIPO hipotética (miles de pesos)}
+\label{tab:estado_ilustrativo}
+\begin{tabular}{lr}
+\toprule
+Concepto & Monto \\
+\midrule
+Ingresos por intereses & 45{,}000 \\
+Gastos por intereses & $-15{,}000$ \\
+Margen financiero & 30{,}000 \\
+Estimaciones preventivas para riesgos crediticios & $-6{,}000$ \\
+Margen financiero ajustado por riesgos crediticios & 24{,}000 \\
+Comisiones y tarifas netas & 3{,}000 \\
+Resultado por intermediación & 500 \\
+Otros ingresos netos de la operación & 1{,}000 \\
+Gastos de administración y promoción & $-20{,}000$ \\
+Resultado antes de impuestos & 8{,}500 \\
+Impuestos a la utilidad & $-2{,}500$ \\
+Resultado neto & 6{,}000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Balance general ilustrativo de la misma SOFIPO al cierre del periodo (miles de pesos)}
+\label{tab:balance_ilustrativo}
+\begin{tabular}{lr}
+\toprule
+Concepto & Saldo \\
+\midrule
+Cartera vigente & 760{,}000 \\
+Cartera vencida & 40{,}000 \\
+Cartera bruta & 800{,}000 \\
+Estimaciones preventivas constituidas & $-50{,}000$ \\
+Cartera neta & 750{,}000 \\
+Otros activos & 250{,}000 \\
+Activo total & 1{,}000{,}000 \\
+Captación tradicional & 700{,}000 \\
+Otros pasivos & 220{,}000 \\
+Capital contable & 80{,}000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Indicadores calculados con las tablas anteriores (ilustrativo)}
+\label{tab:indicadores_ilustrativos}
+\begin{tabular}{lll}
+\toprule
+Indicador & Cálculo & Valor \\
+\midrule
+IMOR & $40{,}000/800{,}000\times 100$ & 5.0\% \\
+ICOR (con cautela) & $50{,}000/40{,}000\times 100$ & 125\% \\
+Cartera vigente a activo & $760{,}000/1{,}000{,}000$ & 76.0\% \\
+ROA trimestral & $6{,}000/1{,}000{,}000$ & 0.60\% \\
+ROE trimestral & $6{,}000/80{,}000$ & 7.5\% \\
+Margen financiero sobre activos & $30{,}000/1{,}000{,}000$ & 3.0\% \\
+Ingreso neto de operación & $30{,}000+3{,}000+500+1{,}000$ & 34{,}500 \\
+Razón de eficiencia & $20{,}000/34{,}500$ & 58.0\% \\
+Costo de riesgo trimestral & $6{,}000/800{,}000$ & 0.75\% \\
+Apalancamiento & $1{,}000{,}000/80{,}000$ & 12.5 \\
+DuPont: margen neto & $6{,}000/34{,}500$ & 17.4\% \\
+DuPont: rotación del activo & $34{,}500/1{,}000{,}000$ & 3.45\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La identidad de DuPont se verifica con estos valores: $0.174\times 0.0345\times 12.5\approx 0.075$, que coincide con el ROE de 7.5\%. El IMOR de 5\% es la proporción de la cartera en incumplimiento contractual, mientras que el ICOR indica que las reservas cubren más que la cartera vencida. Ese resultado es ilustrativo y no representa a ninguna institución real.
+
+\textit{Vínculo causal entre morosidad y capitalización.} Suponga ahora que la cartera vencida sube de 40{,}000 a 80{,}000 y que las estimaciones requeridas aumentan de 6{,}000 a 9{,}000 en el mismo trimestre. Para simplificar, el efecto fiscal se supone nulo. El IMOR pasa de 5\% a 10\%, el resultado antes de impuestos baja en 3{,}000 y el resultado neto pasa a 3{,}000. El capital contable baja de 80{,}000 a 77{,}000. Si el requerimiento de capital se mantiene en 64{,}000, el NICAP cae de 125\% a 120.3\%. Esta cadena es el mecanismo que la tesis busca capturar: la morosidad se convierte en estimaciones, las estimaciones reducen el resultado, el resultado reduce el capital y el capital reduce la capacidad de cubrir el riesgo.
+
+La cadena también muestra por qué la morosidad es un indicador rezagado de la rentabilidad. El IMOR se observa en el mismo periodo que el resultado, pero la pérdida económica del crédito se reconoce a través de estimaciones que pueden anticiparse o retrasarse según la política contable. La relación temporal entre morosidad y resultados es la que motiva usar rezagos del IMOR como predictores en la tesis, mientras que la asociación entre morosidad y solvencia o rentabilidad se documenta en la literatura supervisora (Banco de México, 2025). La magnitud real del rezago debe establecerse empíricamente y no se supone a priori.
+
+\textit{Flujos y saldos.} Los ingresos, gastos, estimaciones del periodo y el resultado neto son flujos: se acumulan durante un intervalo de tiempo. El activo, la cartera, la captación y el capital contable son saldos: se miden en un instante. Dividir un flujo entre un saldo produce una tasa por unidad de tiempo, mientras que comparar dos saldos produce una proporción. Confundirlos produce errores de interpretación; por ejemplo, un ROA trimestral no es comparable con un ROA anual sin anualizar.
+
+Normalizar por el activo total es una práctica común porque convierte cada partida en una proporción del tamaño de la institución. Así, una SOFIPO grande y una pequeña pueden compararse en la misma escala, y el modelo aprende de patrones relativos en lugar de depender del tamaño absoluto. La variable \texttt{ratio\_cartera\_activo} y la variable \texttt{ROA} del código siguen esta lógica. Un modelo que usa montos absolutos tiende a identificar el tamaño de la institución como predictor del riesgo, lo que puede ser un artefacto.
+
+\subsection{Marco normativo de la información financiera}
+La información financiera de las instituciones mexicanas se elabora con referencia a las Normas de Información Financiera (NIF) emitidas por el Consejo Mexicano de Normas de Información Financiera (Consejo Mexicano de Normas de Información Financiera, s. f.). La NIF B-3, sobre el estado de resultados, es la norma que establece la presentación y los conceptos de ese estado para las entidades que aplican las NIF. % VERIFICAR: alcance exacto de la NIF B-3 y de su aplicación a las SOFIPOs; no se verificó contra la norma vigente.
+
+Las SOFIPOs, sin embargo, reportan a la CNBV conforme a sus propios criterios contables y a los formatos del boletín estadístico. Esos criterios pueden diferir de las NIF en nomenclatura, en contenido y en la forma de valuar las estimaciones preventivas, por lo que las partidas de la base de datos deben leerse con la nomenclatura del boletín y no con la de la norma general (Comisión Nacional Bancaria y de Valores, s. f.). Esta distinción explica por qué este capítulo describe las partidas de forma general y remite a la CNBV para sus definiciones operativas. En cuanto al marco legal, las sociedades financieras populares que captan recursos del público se ubican en el ámbito de la Ley de Ahorro y Crédito Popular (Ley de Ahorro y Crédito Popular, 2001). % VERIFICAR: alcance exacto de la Ley de Ahorro y Crédito Popular frente a la regulación específica de las SOFIPOs del panel; la ubicación legal se describe en forma general y debe confirmarse con el texto vigente.
+
+\section{Variables Macroeconómicas: Inflación, Tasas de Interés, Tipo de Cambio y Actividad Económica}\label{sec:macro}
+
+Una SOFIPO no opera en el vacío. Su costo de fondeo depende de las tasas de interés de mercado, su cartera depende del ingreso de los hogares, y el poder de compra de sus deudores depende de la inflación. Esta sección explica las variables macroeconómicas del panel, el procedimiento con que el código las obtiene y, de manera explícita, la distinción entre las series oficiales, con las que se obtuvieron los resultados de la tesis, y las series sintéticas de una ejecución anterior que se descartó.
+
+\subsection{Inflación e índice nacional de precios al consumidor}
+La inflación es el aumento sostenido del nivel general de precios. Se mide con un índice de precios, un número que resume el costo de una canasta de bienes y servicios en un periodo, relativo a un periodo base. En México, el índice nacional de precios al consumidor (INPC) es el indicador oficial de inflación y lo publica el Instituto Nacional de Estadística y Geografía (Instituto Nacional de Estadística y Geografía, s. f.-b).
+
+La variación anual del índice mide la inflación de los últimos doce meses:
+\begin{equation}
+\pi_t=\left(\frac{\text{INPC}_t}{\text{INPC}_{t-12}}-1\right)\times 100
+\label{eq:inflacion_anual}
+\end{equation}
+La inflación general incluye todos los componentes de la canasta. La inflación subyacente excluye componentes con precios muy volátiles, como algunos agropecuarios y energéticos, y busca reflejar la tendencia de largo plazo de los precios (Mankiw, 2019). Ambas medidas son útiles, pero la general es la que afecta el poder de compra de los hogares en el periodo.
+
+\textit{Ejemplo ilustrativo.} Si el INPC pasa de 125.0 a 130.0 en doce meses, la inflación anual es $(130/125-1)\times 100=4.0\%$. Un ingreso nominal de 10{,}000 pesos al inicio del periodo equivale a $10{,}000/1.04\approx 9{,}615$ pesos de poder de compra original.
+
+La inflación afecta a la tesis por varias vías. Si los ingresos de los hogares crecen menos que los precios, el ingreso real cae y la capacidad de pago disminuye, lo que puede elevar la morosidad. Si los costos de la institución suben con la inflación, la razón de eficiencia se deteriora. Además, la inflación alta suele inducir una respuesta de la política monetaria que eleva las tasas de interés, con efectos sobre el costo del crédito (Mankiw, 2019). La literatura sobre microfinanzas identifica la vulnerabilidad de los hogares de bajos ingresos a choques de ingreso, que la inflación puede agravar (Morduch, 1999).
+
+\subsection{Tasas de interés nominal y real y ecuación de Fisher}
+La tasa de interés nominal es el rendimiento o costo expresado en unidades monetarias. La tasa real descuenta el efecto de la inflación y mide el rendimiento en términos de poder de compra. La relación exacta entre ambas se conoce como ecuación de Fisher (Fisher, 1930):
+\begin{equation}
+1+i=(1+r)(1+\pi^e), \qquad r\approx i-\pi^e
+\label{eq:fisher}
+\end{equation}
+donde $i$ es la tasa nominal, $r$ la tasa real y $\pi^e$ la inflación esperada. La aproximación $r\approx i-\pi^e$ es suficiente para tasas bajas, pero la forma multiplicativa es la exacta.
+
+\textit{Ejemplo ilustrativo.} Con una tasa nominal de 10\% y una inflación esperada de 4\%, la tasa real exacta es $1.10/1.04-1\approx 5.77\%$, mientras que la aproximación lineal da $6\%$. La diferencia crece cuando la inflación es alta.
+
+Para una SOFIPO, la tasa nominal determina el costo de fondeo y el precio del crédito, mientras que la tasa real determina cuánto se transfiere a los hogares en términos de poder de compra. Una tasa real alta puede dificultar el pago de deudas de largo plazo, aunque su efecto sobre la morosidad depende del ingreso y de la capacidad de refinanciamiento. La ecuación de Fisher es el marco que permite separar estos dos componentes.
+
+\subsection{TIIE a 28 días y Cetes a 28 días}
+La Tasa de Interés Interbancaria de Equilibrio (TIIE) es la tasa de referencia de los créditos interbancarios en pesos. Se calcula a partir de cotizaciones de bancos y se publica para distintos plazos; la TIIE a 28 días es la que el código utiliza (Banco de México, s. f.). Su relación con la política monetaria es directa: el Banco de México fija una tasa objetivo, y la TIIE tiende a ubicarse cerca de ella porque los bancos negocian préstamos a un día a precios que reflejan el objetivo de política (Mankiw, 2019). La TIIE es, por tanto, un indicador de las condiciones monetarias del mercado de crédito. % VERIFICAR: metodología exacta de cálculo de la TIIE y su relación operativa con la tasa objetivo, según las publicaciones vigentes de Banco de México; no se verificó contra la fuente oficial.
+
+Los Cetes son certificados de la Tesorería de la Federación que se colocan mediante subasta y pagan un rendimiento. Los Cetes a 28 días son instrumentos de muy corto plazo y su rendimiento de subasta funciona como referencia de tasa de corto plazo en el mercado mexicano. Como son obligaciones del gobierno federal, su riesgo es soberano y no se confunde con el riesgo crediticio de una SOFIPO (Banco de México, s. f.). % VERIFICAR: frecuencia y mecanismo exacto de la subasta de Cetes a 28 días y la identificación de la serie SF60633 en la base del Banco de México; no se verificaron contra la fuente oficial.
+
+El diferencial entre dos tasas, llamado \textit{spread}, es la diferencia entre ellas. El spread entre la TIIE y los Cetes refleja el riesgo de contraparte bancario, la liquidez relativa y las expectativas de política. La estructura temporal de tasas describe cómo cambian los rendimientos según el plazo; una curva con pendiente positiva indica que el mercado espera tasas más altas en el futuro (Mankiw, 2019).
+
+\subsection{Transmisión de la tasa de interés a la SOFIPO y a la morosidad}
+La transmisión de la política monetaria opera por varios canales. El primero es el costo de fondeo: si la captación y los préstamos interbancarios se pactan a tasas que siguen a la TIIE, el gasto por intereses sube cuando la tasa sube. El segundo es la tasa activa: el precio del crédito se ajusta con cierto rezago, y el margen depende de la velocidad de ese ajuste. El tercero es la morosidad: tasas más altas incrementan el monto de los pagos de los deudores con tasa variable, lo que puede deteriorar la cartera.
+
+Stiglitz y Weiss (1981) muestran que la tasa de interés puede afectar la composición de la cartera, porque los prestatarios de mayor riesgo son los más dispuestos a aceptar tasas altas. Este mecanismo de selección adversa es un canal adicional por el cual las condiciones de tasas se relacionan con la calidad del crédito. Por ello, las variables de tasas se incluyen en el panel como indicadores del entorno, y su efecto se evalúa con los métodos de aprendizaje automático y con las métricas descritas en las Secciones~\ref{sec:ml} y~\ref{sec:metricas}.
+
+\subsection{Tipo de cambio FIX}
+El tipo de cambio pesos por dólar es el precio de la moneda extranjera en términos de la moneda nacional. El tipo de cambio FIX es la referencia que determina el Banco de México cada día hábil para la liquidación de obligaciones en moneda extranjera (Banco de México, s. f.). En el código, se usa el promedio mensual de esta serie como variable macro.
+
+El tipo de cambio afecta al crédito por dos canales. Si la SOFIPO tiene fondeo o cartera en moneda extranjera, una depreciación del peso aumenta el valor en pesos de sus obligaciones y puede presionar su capital. Si los deudores tienen ingresos en pesos pero consumen bienes importados, una depreciación eleva sus costos y reduce su capacidad de pago. Ambos efectos son más relevantes para instituciones con exposición cambiaria, que no se identifica en el panel de la tesis. % VERIFICAR: composición cambiaria de la cartera y del fondeo de las SOFIPOs del panel; no se verificó contra la base de datos.
+
+\subsection{IGAE y ciclo económico}
+El Indicador Global de la Actividad Económica (IGAE) es un indicador mensual que estima el valor de la producción de bienes y servicios de la economía. Lo publica el Instituto Nacional de Estadística y Geografía, y funciona como una aproximación mensual del producto interno bruto (Instituto Nacional de Estadística y Geografía, s. f.-a). El código usa la serie original del IGAE en base 2018, sin desestacionalizar, en su nivel total.
+
+El ciclo económico es la fluctuación de la actividad alrededor de su tendencia. Durante las expansiones, el empleo y el ingreso de los hogares crecen y la morosidad tiende a bajar; durante las recesiones ocurre lo contrario. Por ello, la actividad económica es un determinante de la morosidad, aunque con rezago y con intensidad que varía según el segmento de crédito (Mankiw, 2019). La literatura sobre riesgo de crédito reconoce que la calidad de la cartera es procíclica: el deterioro se acumula en las recesiones, cuando las estimaciones y las pérdidas se reconocen con retraso (Basel Committee on Banking Supervision, 2011).
+
+Hay dos advertencias para el uso del IGAE en la tesis. La primera es que el nivel de la serie tiene tendencia, por lo que su efecto en un modelo de nivel se confunde con el crecimiento de largo plazo; la transformación natural es la variación anual o la tasa de crecimiento. La segunda es que la serie original contiene estacionalidad y efectos de calendario, como el número de días hábiles, que no reflejan la actividad de fondo. Desestacionalizar la serie separa estos componentes, pero el código no lo hace. % VERIFICAR: si la serie SR17692 corresponde al total del IGAE original en base 2018, según la identificación del Instituto Nacional de Estadística y Geografía; no se verificó contra la fuente oficial.
+
+\subsection{Procedimiento del código para las series macroeconómicas}
+La función que obtiene las series macroeconómicas realiza seis pasos, que se describen aquí en el orden en que se ejecutan. La Tabla~\ref{tab:series_macro} resume las series y sus transformaciones.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Series macroeconómicas del código, identificadores y transformaciones}
+\label{tab:series_macro}
+\begin{tabular}{llllp{4.6cm}}
+\toprule
+Variable & Identificador & Descripción & Frecuencia & Transformación en el código \\
+\midrule
+TIIE\_28 & SF43783 & TIIE a 28 días, tasa anual (\%) & Diaria & Promedio mensual \\
+Inflacion & SP1 & INPC, índice general & Mensual & Variación anual \\
+USD\_MXN & SF43718 & Tipo de cambio FIX, pesos por dólar & Diaria & Promedio mensual \\
+Cetes\_28 & SF60633 & Cetes a 28 días, tasa de subasta (\%) & Por subasta & Promedio mensual \\
+IGAE & SR17692 & IGAE base 2018, original, total & Mensual & Nivel sin transformación \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El primer paso construye la consulta. La fecha inicial se retrasa doce meses respecto del inicio del panel para que la variación anual del INPC esté disponible desde el primer periodo de análisis. Las cinco series se piden en una sola solicitud a la API, separadas por comas, con la fecha final del panel. El segundo paso valida la respuesta: si el código HTTP no es exitoso, la ejecución se detiene. El tercero convierte cada serie a una tabla con fecha y valor, interpretando las fechas en formato día/mes/año y los valores como números, con nulos donde el dato no sea numérico.
+
+El cuarto paso calcula el promedio mensual de cada serie y propaga el último valor disponible hacia adelante. El promedio mensual es
+\begin{equation}
+\bar{x}_m=\frac{1}{N_m}\sum_{d\in m}x_d
+\label{eq:promedio_mensual}
+\end{equation}
+donde $N_m$ es el número de observaciones del mes $m$. En la práctica, el código usa \texttt{resample("MS")}, que asigna cada observación al primer día de su mes, y \texttt{mean()}, que calcula el promedio. La propagación hacia adelante, \texttt{ffill()}, reemplaza un valor faltante por el último valor observado. Es una imputación con información pasada, válida para evitar fuga de información, aunque introduce escalones cuando la serie tiene huecos largos.
+
+El quinto paso convierte el INPC en variación anual con \texttt{pct\_change(12)} multiplicado por 100. La función calcula $\text{INPC}_t/\text{INPC}_{t-12}-1$ sobre filas consecutivas, por lo que la serie debe ser mensual y no tener huecos, condición que el paso anterior garantiza. Los primeros doce valores quedan nulos y se eliminan al recortar la serie al inicio del panel, lo que justifica la extensión inicial de doce meses.
+
+El sexto paso recorta el periodo al inicio del panel y verifica que no existan valores faltantes. Si quedan nulos, el código lanza un error y se detiene. Esta comprobación impide que una serie incompleta entre al modelo sin aviso.
+
+Después, las series se unen con el panel por la fecha del periodo de cada institución. La unión es exacta: el valor macro asignado a un trimestre es el de la fecha coincidente del índice mensual. Si el periodo del panel corresponde al primer mes de cada trimestre, el valor asignado es el promedio de ese único mes, y no el promedio del trimestre completo. Esta elección es una decisión de diseño. % VERIFICAR: correspondencia exacta entre la fecha de la columna Periodo del panel y el primer día del mes del índice macro; si no coinciden, la unión produce valores faltantes que el código no revisa después del merge.
+
+\subsection{Series sintéticas de una ejecución anterior}
+Una ejecución anterior del pipeline usó series macroeconómicas sintéticas en lugar de observaciones oficiales, y sus resultados se descartaron. Las series sintéticas eran deterministas: se generaron con una tendencia lineal más ruido gaussiano con semilla 42. La serie de TIIE\_28 era una tendencia lineal con ruido, y Cetes\_28 se definía como TIIE\_28 menos 0.4 puntos porcentuales. Por construcción, Cetes\_28 era una función exacta de TIIE\_28, lo que implicaba colinealidad perfecta.
+
+La consecuencia fue que cualquier conclusión sobre el efecto de las variables macroeconómicas en la morosidad, obtenida con esas series, no tenía valor económico. El modelo solo podía aprender la estructura del generador de datos. En esa ejecución los Cetes no recibieron contribución SHAP y la inflación encabezó las variables macroeconómicas, resultados que dependían del generador y no de la economía. La colinealidad perfecta impedía además separar los efectos de ambas tasas, como se explica en la Sección~\ref{sec:limitaciones_macro}.
+
+La versión actual del script descarga series oficiales desde la API SIE de Banco de México, incluidas las del INPC y del IGAE que publica el Instituto Nacional de Estadística y Geografía, y no contiene respaldo simulado: si la descarga falla, el pipeline se detiene. Los resultados, figuras y métricas reportados en la tesis se obtuvieron con esta versión. Con ella, el IGAE encabeza las variables macroeconómicas en la importancia SHAP, seguido del tipo de cambio, y los Cetes reciben una contribución distinta de cero, aunque su relación con la TIIE sigue siendo fuerte.
 
 \section{Microfinanzas: Teoría Económica y Contexto Mexicano}
 
@@ -26,7 +719,15 @@ La investigación académica sobre estas entidades es todavía limitada, pero ha
 
 Algunos episodios de crisis en el sector, como los casos de Ficrea (2014), Caja Sierra Gorda y Operadora de Recursos Reforma, se mencionan en el Capítulo 1 como antecedentes. Su descripción detallada requiere fuentes primarias de la CNBV y de los procedimientos administrativos correspondientes, que no fueron verificadas para este marco.% VERIFICAR: fuentes primarias de Ficrea (2014), Caja Sierra Gorda y Operadora de Recursos Reforma.
 
-\section{Riesgo Crediticio: Teoría Financiera y Regulación}
+\section{Riesgo Crediticio: Teoría Financiera y Regulación}\label{sec:riesgo}
+
+\subsection{Cartera, provisiones y el balance de una SOFIPO}
+La cartera de crédito de una institución se divide en cartera vigente, cuyos pagos están al corriente, y cartera vencida, cuyos pagos presentan atrasos conforme a los criterios de la autoridad. Las instituciones registran provisiones, que son reservas contables destinadas a cubrir pérdidas esperadas. Como el gasto por provisiones reduce la utilidad, el nivel de morosidad influye directamente en el resultado del periodo y, a través de él, en el capital. Esta cadena de efectos explica por qué la morosidad, el resultado neto y la capitalización se analizan en conjunto en la tesis.
+
+Las normas contables internacionales recientes organizan las pérdidas crediticias en tres etapas: pérdida esperada a doce meses para créditos sin deterioro significativo, pérdida esperada durante toda la vida del crédito cuando su riesgo aumentó de forma significativa, y deterioro confirmado para créditos con evidencia observable de pérdida (NIIF 9).% VERIFICAR: correspondencia exacta entre estas etapas y los criterios contables de la CNBV aplicables a SOFIPOs; no se verificó contra la normativa vigente.
+
+\subsection{Rentabilidad y solvencia: ROA y ROE}
+Dos indicadores resumen el desempeño económico de una institución. El rendimiento sobre activos (ROA) es la utilidad neta entre el activo total promedio, y mide la eficiencia con la que la institución convierte sus recursos en utilidad. El rendimiento sobre capital (ROE) es la utilidad neta entre el capital contable promedio, y mide el rendimiento para los accionistas. Un ROE alto con un ROA bajo indica que la institución utiliza un apalancamiento elevado, lo que aumenta la sensibilidad del capital a pérdidas moderadas. Esta relación entre apalancamiento y vulnerabilidad es la razón por la que el NICAP y el resultado neto se consideran conjuntamente en el estudio, y por la que Banco de México (2025) asocia la morosidad con la solvencia y la rentabilidad.
 
 \subsection{Pérdida esperada y componentes del riesgo de crédito}
 El riesgo de crédito se formaliza, en el marco de Basilea, como la pérdida económica esperada derivada del incumplimiento de un deudor (Basel Committee on Banking Supervision, 2011):
@@ -35,6 +736,8 @@ PE = PD \times EAD \times LGD
 \label{eq:perdida_esperada}
 \end{equation}
 donde $PD \in [0,1]$ es la probabilidad de incumplimiento (\textit{Probability of Default}), $EAD \geq 0$ es la exposición al momento del incumplimiento (\textit{Exposure at Default}), expresada en unidades monetarias, y $LGD \in [0,1]$ es la severidad de la pérdida (\textit{Loss Given Default}), es decir, la proporción de la exposición que no se recupera. La pérdida esperada se provisiona; la variabilidad no esperada alrededor de ese valor debe cubrirse con capital.
+
+La ecuación muestra por qué un modelo que solo predice incumplimiento no basta para dimensionar el riesgo. Una institución con $PD$ moderada pero $LGD$ alta puede tener una pérdida esperada mayor que otra con $PD$ elevada y garantías que recuperan buena parte de la exposición. El estudio predice el IMOR, que es un indicador de cartera y no un $PD$ por crédito, por lo que su relación con la pérdida esperada es indirecta.
 
 \subsection{Índice de Morosidad (IMOR)}
 El indicador central de la investigación es el Índice de Morosidad, definido como:
@@ -55,12 +758,53 @@ Mide la suficiencia patrimonial de la institución frente a los riesgos que asum
 \subsection{Basilea III y su adaptación a las SOFIPOs}
 Basilea III elevó el mínimo de capital ordinario (\textit{Common Equity Tier 1}) a 4.5\% de los activos ponderados por riesgo, fijó en 6\% el mínimo de capital de nivel 1 y en 8\% el mínimo de capital total. Además, introdujo un colchón de conservación de 2.5\% y un colchón contracíclico que las autoridades nacionales pueden activar entre 0\% y 2.5\% (Basel Committee on Banking Supervision, 2011). Estos requerimientos se diseñaron para bancos internacionalmente activos (Basel Committee on Banking Supervision, 2011), por lo que su aplicación a una SOFIPO requiere adaptación. La CNBV no exige la implementación íntegra de ese marco a las SOFIPOs, pero sí sistemas adecuados de gestión de riesgo de crédito, de mercado y operacional.% VERIFICAR: alcance exacto de la normativa de la CNBV aplicable a SOFIPOs en el periodo de estudio.
 
+\subsection{Clasificación de la cartera: vigente, vencida y reestructurada}
+La clasificación de la cartera es el procedimiento mediante el cual la institución asigna cada crédito a una categoría según el comportamiento de sus pagos. La distinción básica es entre cartera vigente, que está al corriente, y cartera vencida, que presenta atrasos conforme a los criterios de la autoridad. Los criterios fijan a partir de cuántos días o de cuántos pagos incumplidos un crédito pasa a vencido, y cómo se tratan los créditos reestructurados, que pueden regresar a vigentes si cumplen condiciones de pago. Estos criterios son normativos y no son comparables sin conocer la regla exacta (Comisión Nacional Bancaria y de Valores, s. f.).
+
+La clasificación importa porque define el numerador del IMOR. Si una institución reestructura créditos vencidos y los declara vigentes, su IMOR baja aunque la capacidad de pago de sus clientes no haya cambiado. Por eso el análisis de morosidad debe considerar, además del indicador, la política de reestructuras de la institución. % VERIFICAR: reglas exactas de clasificación y reestructura de cartera para SOFIPOs en el periodo de estudio, según la normativa de la CNBV; no se verificaron contra la fuente oficial.
+
+\subsection{IMOR e ICOR: indicadores de cartera con cautela}
+El IMOR, definido en la Ecuación~\eqref{eq:imor}, mide la proporción de la cartera en incumplimiento contractual. Su complemento natural es el índice de cobertura, que relaciona las estimaciones preventivas con la cartera vencida. Con la notación de la tesis, el ICOR se define como
+\begin{equation}
+\text{ICOR}_t=\frac{\text{Estimaciones preventivas constituidas}_t}{\text{Cartera Vencida}_t}\times 100
+\label{eq:icor}
+\end{equation}
+Un ICOR alto indica que las reservas cubren una parte grande de la cartera vencida, y un ICOR bajo indica una cobertura débil. Ambos indicadores describen dimensiones distintas: el IMOR describe la magnitud del problema y el ICOR describe la preparación de la institución para absorberlo.
+
+Hay que usar estos indicadores con cautela. El ICOR puede superar 100\% cuando las reservas exceden la cartera vencida, lo que no implica un error. Además, la definición exacta puede variar según el boletín y según si las estimaciones se toman del balance o del requerimiento regulatorio. % VERIFICAR: definición exacta del índice de cobertura en el boletín de la CNBV para SOFIPOs; la fórmula de la Ecuación~\eqref{eq:icor} es la usual, pero no se verificó contra la fuente oficial.
+
+El IMOR no es una probabilidad de incumplimiento por crédito, como se indicó al inicio de esta sección. Es una proporción de saldos, por lo que refleja tanto el número de créditos en mora como su tamaño. Una institución con pocos créditos grandes en mora puede tener un IMOR alto con pocos deudores afectados, y una institución con muchos créditos pequeños en mora puede tener un IMOR bajo.
+
+\subsection{Morosidad como indicador rezagado y procíclico}
+La morosidad es un indicador rezagado, porque se reconoce cuando los pagos ya están atrasados, y no cuando el deudor empieza a tener dificultades. Un atraso prolongado solo se observa después de que el deterioro económico ya ocurrió. Esta propiedad limita su utilidad como alerta temprana, y motiva la búsqueda de predictores anticipados como el margen financiero, la captación o el entorno macroeconómico (Basel Committee on Banking Supervision, 2011).
+
+La morosidad también es procíclica. En expansiones, la cartera crece, los créditos nuevos se otorgan con criterios más relajados y la morosidad es baja. En recesiones, la morosidad sube y, si las reservas se reconocen con retraso, el resultado se deteriora de forma acumulada. Por eso una métrica de morosidad estable en un periodo de bonanza puede ocultar vulnerabilidades que se materializan después. Esta dinámica explica la necesidad de periodos de estudio que incluyan ciclos completos, como el panel de 2015 a 2025 de la tesis, y de análisis que separen la tendencia del ciclo (Basel Committee on Banking Supervision, 2011).
+
+\subsection{Modelos clásicos de riesgo: scoring, Altman y regresión logística}
+El \textit{credit scoring} es la asignación de una puntuación a cada solicitante que resume su probabilidad de incumplimiento a partir de variables observables. Un modelo de scoring estima esa probabilidad con una regresión logística, con árboles o con otros clasificadores, y la puntuación se traduce en decisiones de aprobación o de límite de crédito. La regresión logística es el modelo estándar por su interpretabilidad y por la facilidad de auditarlo (Hosmer et al., 2013). Lessmann et al. (2015) comparan de forma sistemática algoritmos de clasificación aplicados a scoring de crédito, y su trabajo es una referencia para la evaluación comparativa de modelos en este campo.
+
+Altman (1968) propuso un índice de quiebra que combina cinco razones financieras mediante un análisis discriminante lineal. Su forma original es
+\begin{equation}
+Z=1.2\,X_1+1.4\,X_2+3.3\,X_3+0.6\,X_4+1.0\,X_5
+\label{eq:altman}
+\end{equation}
+donde $X_1$ es el capital de trabajo entre activo total, $X_2$ las utilidades retenidas entre activo total, $X_3$ la utilidad antes de intereses e impuestos entre activo total, $X_4$ el valor de mercado del capital entre pasivo total y $X_5$ la rotación del activo. En la formulación original, valores de $Z$ por debajo de 1.81 se asocian con una zona de riesgo de quiebra, y valores por encima de 2.99 con una zona segura. Esta formulación se diseñó para empresas manufactureras que cotizan en bolsa, por lo que su aplicación a SOFIPOs requiere adaptación. % VERIFICAR: umbrales de zona de la formulación original de Altman (1968) y su aplicabilidad a SOFIPOs; no se verificaron contra la publicación original.
+
+\textit{Ejemplo ilustrativo.} Con $X_1=0.10$, $X_2=0.20$, $X_3=0.10$, $X_4=0.80$ y $X_5=1.00$, el índice vale $Z=0.12+0.28+0.33+0.48+1.00=2.21$, que cae en la zona intermedia de la formulación original.
+
+El modelo de Altman es antecedente de la idea que sustenta la tesis: combinar varias razones contables en un solo predictor de quiebra. La diferencia metodológica es que la tesis usa un modelo de aprendizaje automático sobre un panel con rezagos, mientras que Altman usa un discriminante lineal de corte transversal. Ambos enfoques comparten la premisa de que la información contable contiene señales anticipadas del deterioro.
+
+\subsection{Aprendizaje automático en riesgo de crédito y alerta temprana}
+El aprendizaje automático se ha aplicado al riesgo de crédito para mejorar la clasificación de solicitantes y la predicción de incumplimiento. Khandani et al. (2010) muestran que los modelos no lineales capturan relaciones entre el historial de pagos y el comportamiento del deudor que los modelos lineales no recogen. Barboza et al. (2017) comparan técnicas de aprendizaje automático con modelos tradicionales de quiebra, y Fuster et al. (2022) estudian cómo la adopción de técnicas de predicción modifica la distribución del crédito entre prestatarios. La literatura reciente, de la que se presenta un panorama más amplio en la Sección~\ref{sec:ml}, sugiere que la ganancia de desempeño es mayor cuando los datos son ricos en variables y tienen una estructura temporal explotable.
+
+La alerta temprana es la aplicación supervisora de esos modelos. Un sistema de alerta temprana busca anticipar el deterioro de una institución antes de que se materialice en indicadores de solvencia. Scheffer et al. (2009) formulan señales de alerta temprana para transiciones críticas en sistemas complejos, concepto que se ha trasladado al análisis de vulnerabilidades financieras, y Beutel et al. (2019) aplican aprendizaje automático a la detección temprana de problemas en instituciones financieras. Holopainen y Sarlin (2017) comparan modelos para la alerta temprana de vulnerabilidades bancarias. La tesis se inscribe en esta línea, con la salvedad de que el horizonte de predicción es de un trimestre y la variable objetivo es el IMOR futuro o su binarización.
+
 \section{Econometría de Datos Panel y Series Temporales}
 
 La econometría constituye la línea base comparativa de la tesis. Su papel es ofrecer modelos interpretables y con una tradición de validación consolidada frente a los cuales se contrastan los métodos de aprendizaje automático.
 
 \subsection{Regresión lineal y supuestos de identificación}
-Un modelo de regresión relaciona una variable dependiente $y_i$ con un vector de regresores $\mathbf{x}_i$ mediante $y_i = \beta_0 + \sum_j \beta_j x_{ij} + \epsilon_i$. La identificación del efecto de cada regresor requiere que el error sea ortogonal a los regresores, es decir, $\mathbb{E}[\epsilon_i \mid \mathbf{x}_i] = 0$. Cuando esta condición falla por variables omitidas correlacionadas con los regresores, el estimador de Mínimos Cuadrados Ordinarios es sesgado e inconsistente (Wooldridge, 2010). La especificación del modelo, la verificación de los supuestos de no autocorrelación y homocedasticidad, y las pruebas de significancia son pasos necesarios de cualquier análisis econométrico riguroso.
+Un modelo de regresión relaciona una variable dependiente $y_i$ con un vector de regresores $\mathbf{x}_i$ mediante $y_i = \beta_0 + \sum_j \beta_j x_{ij} + \epsilon_i$. La identificación del efecto de cada regresor requiere que el error sea ortogonal a los regresores, es decir, $\mathbb{E}[\epsilon_i \mid \mathbf{x}_i] = 0$. Cuando esta condición falla por variables omitidas correlacionadas con los regresores, el estimador de Mínimos Cuadrados Ordinarios es sesgado e inconsistente (Wooldridge, 2010). La especificación del modelo, la verificación de los supuestos de no autocorrelación y homocedasticidad, y las pruebas de significancia son pasos necesarios de cualquier análisis econométrico riguroso. El estimador de la Ecuación~\eqref{eq:mco} es el caso lineal de este procedimiento.
 
 \subsection{Series temporales: estacionariedad y procesos ARIMA}
 Una serie $\{Y_t\}_{t=1}^T$ es débilmente estacionaria si su media y su varianza son constantes en el tiempo y su autocovarianza $\gamma(s)=\text{Cov}(Y_t,Y_{t+s})$ depende solo del rezago $s$. Las series que presentan tendencias deterministas o estocásticas requieren diferenciación para alcanzar estacionariedad. El procedimiento de Box y Jenkins (1976) organiza la identificación, estimación y validación de modelos ARIMA a partir de las funciones de autocorrelación (ACF) y de autocorrelación parcial (PACF), que orientan la elección de los órdenes autorregresivo y de media móvil.
@@ -73,12 +817,253 @@ Un proceso $ARIMA(p,d,q)$ puede escribirse con el operador de rezagos $L$ como:
 \end{equation}
 donde $\phi_p(L)$ y $\theta_q(L)$ son polinomios en $L$ de órdenes $p$ y $q$. La extensión estacional $SARIMA(p,d,q)(P,D,Q)_s$ incorpora componentes autorregresivos y de media móvil en la frecuencia estacional $s$ (Box y Jenkins, 1976). Ambos modelos son univariados: se ajustan de manera independiente para cada institución y no incorporan información transversal ni variables macroeconómicas exógenas. Esta es su principal limitación frente a los enfoques de panel.
 
+\subsection{Autocorrelación y autocorrelación parcial}
+La autocorrelación de orden $s$ es la correlación entre la serie y sí misma desplazada $s$ periodos:
+\begin{equation}
+\rho(s)=\frac{\gamma(s)}{\gamma(0)}, \qquad \gamma(s)=\text{Cov}(Y_t,Y_{t+s})
+\label{eq:acf}
+\end{equation}
+La función de autocorrelación (ACF) grafica $\rho(s)$ contra $s$. Un proceso autorregresivo de orden $p$ tiene una ACF que decae de forma gradual, mientras que un proceso de media móvil de orden $q$ tiene una ACF que se anula después del rezago $q$ (Box y Jenkins, 1976).
+
+La autocorrelación parcial de orden $s$, denotada $\phi_{ss}$, mide la correlación entre $Y_t$ y $Y_{t-s}$ después de quitar el efecto lineal de los rezagos intermedios. La función PACF grafica esa cantidad. En un proceso autorregresivo de orden $p$, la PACF se anula después del rezago $p$. La combinación de ACF y PACF es la base de la identificación de Box y Jenkins para elegir los órdenes de un modelo ARIMA (Box y Jenkins, 1976; Hamilton, 1994).
+
+\textit{Ejemplo ilustrativo.} Si una serie tiene $\rho(1)=0.7$, $\rho(2)=0.49$ y $\rho(3)=0.34$, la ACF decae de forma gradual, lo que sugiere un componente autorregresivo. Si además la PACF es grande en el rezago 1 y casi cero después, el orden $p=1$ es una elección razonable.
+
+En la tesis, estas funciones son el marco para entender por qué el IMOR de un trimestre se parece al del trimestre anterior. Esa persistencia es la razón por la que los rezagos del IMOR son predictores informativos. La identificación de los órdenes de los modelos ARIMA del código, sin embargo, no se documenta con ACF ni PACF, por lo que la elección de $(1,1,1)$ debe entenderse como un supuesto de especificación y no como un resultado de identificación.
+
+\subsection{Prueba de raíz unitaria de Dickey y Fuller}
+Una serie tiene raíz unitaria si contiene una tendencia estocástica que la hace no estacionaria; en el caso más simple, $Y_t=Y_{t-1}+\epsilon_t$ es un paseo aleatorio. La prueba de Dickey y Fuller (1979) contrasta si el coeficiente de la regresión de la primera diferencia sobre el nivel rezagado es cero. La versión aumentada, ADF, incluye rezagos de las diferencias para absorber la autocorrelación:
+\begin{equation}
+\Delta Y_t=\alpha+\gamma\,Y_{t-1}+\sum_{j=1}^{k}\delta_j\,\Delta Y_{t-j}+\epsilon_t, \qquad H_0:\ \gamma=0
+\label{eq:adf}
+\end{equation}
+Bajo $H_0$ la serie tiene raíz unitaria. El estadístico $t$ de $\gamma$ no sigue una distribución $t$ de Student, sino una distribución de Dickey-Fuller con valores críticos más negativos, por lo que las tablas deben usarse específicamente para esta prueba (Dickey y Fuller, 1979; Hamilton, 1994).
+
+La prueba es relevante para la tesis porque la diferenciación de orden $d=1$ en los modelos ARIMA y SARIMA es la respuesta usual a la raíz unitaria. Diferenciar una serie estacionaria introduce sobrediferenciación, que produce una varianza innecesariamente alta; no diferenciar una serie con raíz unitaria produce regresiones espurias. El código del estudio fija $d=1$ sin reportar un contraste ADF, lo que obliga a justificar esa elección con la evidencia de la serie o con un análisis de sensibilidad.
+
+\subsection{Benchmarks univariados en el código}
+El código compara los modelos de panel con dos referencias univariadas, ARIMA(1,1,1) y SARIMAX(1,1,1)(1,1,1)$_{12}$, ajustadas de forma independiente para cada una de las tres instituciones con más observaciones. El procedimiento es de pronóstico rodante: para cada origen $i$ desde el duodécimo periodo hasta el último, el modelo se ajusta con la historia $y_1,\dots,y_{i-1}$ y pronostica un paso adelante $y_i$. Así, cada pronóstico usa solo información anterior, lo que evita la fuga de información.
+
+El número de ajustes es grande. Con una serie de $L$ observaciones, hay $L-12$ orígenes y, por cada uno, dos ajustes, uno de ARIMA y otro de SARIMAX. Por institución, el número de ajustes es $2(L-12)$. Si $L=30$, cada institución requiere 36 ajustes. Como los modelos se estiman por máxima verosimilitud mediante el filtro de Kalman y un optimizador numérico (Seabold y Perktold, 2010; Hamilton, 1994), cada ajuste es costoso y la ejecución es secuencial, porque cada origen depende de su propio ajuste y no se paraleliza en el código.
+
+Dos cuestiones de especificación merecen atención. La primera es la frecuencia de la serie. La tesis define el horizonte predictivo en trimestres, lo que supone un panel trimestral. Con datos trimestrales, un ciclo estacional anual corresponde a $s=4$, mientras que el código usa $s=12$, que corresponde a datos mensuales. % VERIFICAR: confirmar la frecuencia exacta de la serie de cada institución; si el panel es trimestral, el periodo estacional del componente SARIMAX debe ser 4 y no 12.
+
+La segunda cuestión es el tratamiento de advertencias. El código desactiva todas las advertencias, incluidas las de convergencia de statsmodels. Un ajuste que no converge puede producir pronósticos inestables que se promedian sin señal visible. Por ello, el reporte de los benchmarks debe acompañarse de un conteo de ajustes fallidos y de advertencias de convergencia. Las observaciones con error en el ajuste se registran como nulas y se excluyen del promedio del error absoluto.
+
 \subsection{Datos panel: heterogeneidad no observada y efectos fijos}
 Un panel combina la dimensión transversal de instituciones $i=1,\dots,N$ con la dimensión temporal $t=1,\dots,T_i$. Esta estructura permite controlar la heterogeneidad no observada constante en el tiempo y aprovechar la variación entre instituciones (\textit{between}) y dentro de cada institución a lo largo del tiempo (\textit{within}). Un modelo de efectos fijos incorpora un intercepto específico por institución, mientras que el modelo de efectos aleatorios supone que la heterogeneidad no está correlacionada con los regresores; esto último proporciona estimaciones más eficientes solo si el supuesto se cumple (Wooldridge, 2010). Cuando el número de periodos varía entre instituciones, el panel es no balanceado, lo que obliga a tratar con cuidado los rezagos y las ventanas móviles.
 
-\section{Aprendizaje Automático Supervisado}
+La forma general del modelo de efectos fijos es
+\begin{equation}
+y_{it}=\alpha_i+\mathbf{x}_{it}^\top\boldsymbol{\beta}+\epsilon_{it}
+\label{eq:fe_panel}
+\end{equation}
+donde $\alpha_i$ es el efecto no observado de la institución $i$. Una forma práctica de estimarlo es la transformación intragrupo, que resta a cada variable su media por institución: $(y_{it}-\bar{y}_i)=(\mathbf{x}_{it}-\bar{\mathbf{x}}_i)^\top\boldsymbol{\beta}+(\epsilon_{it}-\bar{\epsilon}_i)$. Esta transformación elimina $\alpha_i$ y estima $\boldsymbol{\beta}$ solo con la variación dentro de cada institución. Un modelo de efectos aleatorios trata $\alpha_i$ como una variable aleatoria no correlacionada con los regresores, lo que vuelve más eficiente la estimación si el supuesto es correcto (Wooldridge, 2010).
 
-El aprendizaje automático supervisado busca una función $\hat{f}$ que prediga una variable $y$ a partir de un vector de características $\mathbf{x}$, a partir de ejemplos etiquetados. El interés no está en ajustar bien los datos de entrenamiento, sino en predecir bien observaciones nuevas. Esta sección desarrolla los modelos empleados en la tesis, en el orden en que se apoyan unos en otros.
+La transformación intragrupo es la misma idea de centrar por grupo que el código aplica en el cálculo de promedios por institución para la imputación, pero su propósito es distinto: aquí se quita la heterogeneidad fija, mientras que en la imputación se introduce información de toda la historia, lo que genera la fuga discutida en la Sección~\ref{sec:imputacion}. La diferencia muestra que una misma operación puede ser válida en un modelo y sesgada en otro según el momento en que se aplique.
+
+Los modelos de aprendizaje automático del código no estiman efectos fijos de forma explícita. El identificador numérico de institución, \texttt{Nombre\_ID}, es una aproximación cruda a la heterogeneidad fija y, como se explicó en la Sección~\ref{sec:fund_prog}, no tiene interpretación ordinal.
+
+\section{Optimización Matemática y Computacional}\label{sec:optimizacion}
+
+Casi todos los modelos de esta tesis se ajustan resolviendo un problema de optimización: encontrar los parámetros que hacen mínima una medida de error. La regresión lineal minimiza una suma de cuadrados, la regresión logística maximiza una verosimilitud, XGBoost minimiza un objetivo regularizado y la búsqueda de hiperparámetros minimiza el error de validación. Esta sección presenta el marco matemático común a todos ellos y después los algoritmos concretos que el código utiliza. El orden es el mismo que en el resto del capítulo: primero la formulación, luego la teoría de convexidad, después los métodos de primer orden y de segundo orden, a continuación la búsqueda de hiperparámetros y, al final, la programación dinámica y la complejidad computacional.
+
+\subsection{Problema de optimización: función objetivo y restricciones}
+Un problema de optimización consiste en minimizar una función objetivo $f:\Theta\to\mathbb{R}$ sobre un conjunto factible, que puede estar definido por restricciones:
+\begin{equation}
+\min_{\boldsymbol{\theta}\in\Theta}\ f(\boldsymbol{\theta}) \qquad \text{sujeto a} \quad g_k(\boldsymbol{\theta})\leq 0,\quad h_j(\boldsymbol{\theta})=0
+\label{eq:opt_problema}
+\end{equation}
+La función objetivo mide el costo que se quiere reducir, y las restricciones describen los valores admisibles de los parámetros. Maximizar una función equivale a minimizar su negativo, por lo que todo problema de maximización puede escribirse en esta forma. En el aprendizaje automático, $\boldsymbol{\theta}$ son los pesos de un modelo o las hojas de un árbol, y $f$ es el riesgo empírico de la Ecuación~\eqref{eq:riesgo_empirico} más un término de regularización, como en la Ecuación~\eqref{eq:regularizacion} (Boyd y Vandenberghe, 2004).
+
+La regresión ridge ilustra el caso sin restricciones explícitas. Su objetivo es
+\begin{equation}
+f(\boldsymbol{\beta})=\|\mathbf{y}-X\boldsymbol{\beta}\|^2+\lambda\|\boldsymbol{\beta}\|^2, \qquad \lambda>0
+\label{eq:ridge_objetivo}
+\end{equation}
+La penalización $\lambda\|\boldsymbol{\beta}\|^2$ favorece soluciones con coeficientes pequeños. En la Sección~\ref{sec:fund_mat} se mencionó que la colinealidad hace singular a $X^\top X$; esta penalización resuelve ese problema, como se verá en la siguiente subsección.
+
+\subsection{Mínimos locales, mínimos globales y convexidad}
+Un punto $\boldsymbol{\theta}^{*}$ es un mínimo global si $f(\boldsymbol{\theta}^{*})\leq f(\boldsymbol{\theta})$ para todo $\boldsymbol{\theta}$ factible. Es un mínimo local si la desigualdad se cumple solo en una vecindad de $\boldsymbol{\theta}^{*}$. En problemas generales, los algoritmos de descenso pueden detenerse en un mínimo local o en un punto silla, donde el gradiente es cero pero la función no alcanza un mínimo. Esta es la principal dificultad de las redes neuronales profundas, cuyas funciones de pérdida no son convexas (LeCun et al., 2015).
+
+Una función es convexa si el segmento que une dos puntos de su gráfica queda por encima de la gráfica:
+\begin{equation}
+f\big(\lambda\mathbf{u}+(1-\lambda)\mathbf{v}\big)\leq \lambda f(\mathbf{u})+(1-\lambda) f(\mathbf{v}), \qquad \lambda\in[0,1]
+\label{eq:convexidad}
+\end{equation}
+Si $f$ es dos veces diferenciable, es convexa si y solo si su matriz hessiana $\nabla^2 f$ es semidefinida positiva. Para una función convexa, todo mínimo local es global, y el conjunto de mínimos es convexo. Las pérdidas cuadrática y logística son convexas en los parámetros lineales, lo que garantiza que los métodos de primer orden converjan al óptimo global cuando la tasa de aprendizaje es adecuada (Boyd y Vandenberghe, 2004).
+
+\textit{Ejemplo ilustrativo.} La función $f(\beta)=(y-\beta)^2$ es convexa, con hessiana igual a $2>0$. La función $f(\beta)=\beta^4-2\beta^2$ no es convexa: tiene dos mínimos locales simétricos en $\beta=\pm 1$ y un máximo local en $\beta=0$. Un descenso iniciado en $\beta=0$ no se mueve, porque el gradiente es cero, aunque no sea un mínimo.
+
+La convexidad importa en la tesis porque distingue los modelos con garantías de los que no las tienen. Los modelos lineales y logísticos del panel tienen un único óptimo global. Los ensambles de árboles no son convexos en sus parámetros, porque la estructura de cada árbol es discreta, pero su construcción secuencial es una optimización por etapas de un objetivo que sí es convexo en las predicciones (Friedman, 2001).
+
+\subsection{Condiciones de primer orden y solución cerrada}
+Para una función diferenciable sin restricciones, la condición necesaria de primer orden es $\nabla f(\boldsymbol{\theta}^{*})=\mathbf{0}$. En un problema convexo, esta condición también es suficiente. Los puntos que la cumplen son candidatos a mínimo, máximo o punto silla, y la hessiana distingue entre ellos.
+
+Aplicada a la regresión ridge de la Ecuación~\eqref{eq:ridge_objetivo}, la condición de primer orden produce una solución cerrada:
+\begin{equation}
+\nabla f(\boldsymbol{\beta})=-2X^\top(\mathbf{y}-X\boldsymbol{\beta})+2\lambda\boldsymbol{\beta}=\mathbf{0} \quad\Longrightarrow\quad \hat{\boldsymbol{\beta}}_{\text{ridge}}=(X^\top X+\lambda I)^{-1}X^\top\mathbf{y}
+\label{eq:ridge_cerrada}
+\end{equation}
+La matriz $X^\top X+\lambda I$ es definida positiva para $\lambda>0$, aunque $X^\top X$ sea singular. Por eso la penalización resuelve la colinealidad perfecta, a costa de introducir sesgo en los coeficientes (Hoerl y Kennard, 1970). Este resultado conecta directamente con la Ecuación~\eqref{eq:mco}: cuando $\lambda\to 0$, la solución ridge tiende a la solución de mínimos cuadrados cuando esta existe.
+
+\textit{Ejemplo ilustrativo.} Si $X^\top X=\begin{pmatrix}1&1\\1&1\end{pmatrix}$, la matriz es singular y el sistema de mínimos cuadrados no tiene solución única. Con $\lambda=0.5$, la matriz $X^\top X+0.5I=\begin{pmatrix}1.5&1\\1&1.5\end{pmatrix}$ tiene determinante $1.25>0$ y es invertible.
+
+Esta propiedad es la base de la advertencia sobre la colinealidad perfecta que tenían Cetes\_28 y TIIE\_28 en una ejecución anterior con series sintéticas. Un modelo ridge sobre esas series sí habría producido coeficientes, pero dependerían de la penalización elegida y no de una relación económica identificada.
+
+\subsection{Descenso por gradiente estocástico y mini-lotes}
+El descenso por gradiente, presentado en la Sección~\ref{sec:fund_mat}, calcula el gradiente sobre todo el conjunto de entrenamiento en cada paso. Con $n$ observaciones, cada iteración cuesta $O(np)$ operaciones. Cuando $n$ es muy grande, esa cantidad se vuelve prohibitiva.
+
+El descenso por gradiente estocástico (SGD) usa en cada paso el gradiente de una sola observación, elegida al azar, o de un mini-lote pequeño:
+\begin{equation}
+\boldsymbol{\theta}_{t+1}=\boldsymbol{\theta}_t-\eta_t\,\mathbf{g}_t, \qquad \mathbf{g}_t=\frac{1}{|B_t|}\sum_{i\in B_t}\nabla_{\boldsymbol{\theta}}\,\ell_i(\boldsymbol{\theta}_t)
+\label{eq:sgd}
+\end{equation}
+donde $B_t$ es el mini-lote en la iteración $t$. El gradiente del mini-lote es un estimador insesgado del gradiente completo, pero con ruido. Robbins y Monro (1951) mostraron que, si la tasa $\eta_t$ satisface $\sum_t\eta_t=\infty$ y $\sum_t\eta_t^2<\infty$, el procedimiento converge al óptimo bajo condiciones adecuadas. La primera condición evita que los pasos se detengan antes de llegar al mínimo; la segunda controla el ruido acumulado.
+
+Los mini-lotes equilibran dos costos. Un lote grande reduce el ruido del gradiente, pero cuesta más por iteración. Un lote pequeño es barato pero ruidoso. Además, los lotes aprovechan la paralelización de las operaciones vectoriales (Bottou et al., 2018). Ruder (2016) resume estas variantes y su relación con las bibliotecas de aprendizaje profundo.
+
+\textit{Ejemplo ilustrativo.} Con $n=10{,}000$ observaciones y lotes de 100, una época completa requiere 100 iteraciones, cada una con un gradiente de 100 observaciones. El costo total por época es el mismo que el de un gradiente completo, pero el modelo se actualiza 100 veces, lo que suele acelerar la convergencia en la práctica.
+
+Los métodos de árboles de boosting de la tesis no usan SGD sobre sus parámetros, porque cada árbol se ajusta por completo a los pseudo-residuos. Sin embargo, LightGBM incorpora el muestreo basado en gradientes descrito en la Sección~\ref{sec:ml}, que aplica una idea de muestreo estocástico sobre las observaciones con gradiente pequeño.
+
+\subsection{Momento y Adam}
+El descenso por gradiente puede oscilar en direcciones de alta curvatura y avanzar lentamente en direcciones de baja curvatura. El método de momento acumula una media móvil exponencial de los gradientes, que actúa como una inercia:
+\begin{equation}
+\mathbf{v}_t=\beta\,\mathbf{v}_{t-1}+\mathbf{g}_t, \qquad \boldsymbol{\theta}_{t+1}=\boldsymbol{\theta}_t-\eta\,\mathbf{v}_t
+\label{eq:momento}
+\end{equation}
+con $\beta\in[0,1)$. Las oscilaciones en direcciones opuestas se cancelan en $\mathbf{v}_t$, mientras que las componentes consistentes se acumulan (Ruder, 2016).
+
+Adam (Kingma y Ba, 2015) combina el momento con una escala adaptativa por parámetro. Mantiene una estimación de la media del gradiente, $m_t$, y de su segundo momento, $v_t$, y corrige el sesgo inicial de ambas estimaciones:
+\begin{align}
+m_t &= \beta_1 m_{t-1}+(1-\beta_1)\mathbf{g}_t, & v_t &= \beta_2 v_{t-1}+(1-\beta_2)\mathbf{g}_t^{2} \label{eq:adam_mv}\\
+\hat{m}_t &= \frac{m_t}{1-\beta_1^t}, & \hat{v}_t &= \frac{v_t}{1-\beta_2^t} \label{eq:adam_corr}\\
+\boldsymbol{\theta}_{t+1} &= \boldsymbol{\theta}_t-\eta\,\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon} & & \label{eq:adam_update}
+\end{align}
+donde $\mathbf{g}_t^{2}$ se aplica elemento a elemento. Los valores recomendados por los autores son $\beta_1=0.9$, $\beta_2=0.999$ y $\epsilon=10^{-8}$. La escala por $\sqrt{\hat{v}_t}$ reduce el paso de los parámetros con gradientes grandes y aumenta el de los que tienen gradientes pequeños (Kingma y Ba, 2015).
+
+Adam es uno de los métodos de optimización más usados en el aprendizaje profundo, pero no se usa en los modelos de la tesis, que son de árboles o de regresión. Se incluye aquí como parte del marco general de optimización, porque su lógica explica la mayoría de las variantes de descenso que aparecen en la literatura, y porque la arquitectura LSTM descrita en la Sección~\ref{sec:ml} se entrenaría, en caso de usarse, con métodos de esta familia (Ruder, 2016).
+
+\subsection{Tasa de aprendizaje, criterios de parada y parada temprana}
+La tasa de aprendizaje $\eta$ controla el tamaño del paso. Si es muy grande, el procedimiento oscila o diverge; si es muy pequeña, converge con lentitud. Las tasas se ajustan a menudo con un calendario que disminuye $\eta$ con el número de iteraciones. En los modelos de boosting, la tasa de aprendizaje multiplica la contribución de cada árbol, como se vio en la Ecuación~\eqref{eq:pseudo_residuos}, y su valor interactúa con el número de árboles: una tasa pequeña requiere más árboles para alcanzar el mismo ajuste.
+
+Un criterio de parada decide cuándo terminar la optimización. Puede ser un número máximo de iteraciones, una mejora mínima del objetivo o la estabilización de un error de validación. La parada temprana (\textit{early stopping}) detiene el entrenamiento cuando el error de validación deja de mejorar durante un número de iteraciones llamado paciencia. Es una forma de regularización: limita el ajuste al ruido del conjunto de entrenamiento (Hastie et al., 2009).
+
+En XGBoost y LightGBM, el número de árboles puede seleccionarse con parada temprana sobre una partición de validación. El código de la tesis no la usa: los modelos se ajustan con el número de árboles fijado en la malla de hiperparámetros. Esa decisión es válida mientras la malla se elija con validación cruzada y no con el conjunto de prueba, como se discutió en la Sección~\ref{sec:limitaciones_marco}.
+
+\subsection{Optimización a gran escala}
+La optimización a gran escala distingue entre el error de optimización, que es la distancia entre la solución obtenida y el óptimo del problema empírico, y el error de estimación, que es la distancia entre el óptimo empírico y el óptimo poblacional. Bottou et al. (2018) argumentan que, con datos abundantes, conviene aceptar un error de optimización mayor si el método es más barato por iteración, porque el error de estimación domina de todos modos. Ese argumento explica el éxito del SGD en grandes volúmenes de datos.
+
+El panel de la tesis es pequeño en comparación con estos casos, con un número de observaciones institución-trimestre moderado. Por ello, el costo de optimización no es el cuello de botella: el límite es el error de estimación, es decir, el tamaño muestral y la calidad de los datos. Esta observación justifica usar métodos de optimización exactos, como el gradiente completo en los modelos lineales, y la validación cruzada completa en lugar de submuestras para la selección de hiperparámetros.
+
+\subsection{Métodos de segundo orden y el método de Newton}
+Los métodos de primer orden usan solo el gradiente. Los de segundo orden usan también la curvatura, representada por la matriz hessiana $H$. El método de Newton actualiza los parámetros con
+\begin{equation}
+\boldsymbol{\theta}_{t+1}=\boldsymbol{\theta}_t-H(\boldsymbol{\theta}_t)^{-1}\nabla f(\boldsymbol{\theta}_t)
+\label{eq:newton}
+\end{equation}
+Este paso es el óptimo de la aproximación cuadrática de $f$ alrededor de $\boldsymbol{\theta}_t$. Cuando $f$ es cuadrática, Newton converge en un paso. Su costo por iteración es mayor, porque requiere calcular y resolver un sistema con la hessiana, pero necesita menos iteraciones en problemas bien condicionados (Boyd y Vandenberghe, 2004).
+
+En XGBoost, la aproximación de segundo orden de la Ecuación~\eqref{eq:xgb_taylor} sustituye la pérdida por una cuadrática en la predicción de cada árbol, con gradientes $g_i$ y hessianas $h_i$. El peso óptimo de una hoja, $w_j^{\ast}=-G_j/(H_j+\lambda)$, es exactamente el paso de Newton para esa cuadrática regularizada. La ganancia de la Ecuación~\eqref{eq:xgb_ganancia} mide cuánto reduce la aproximación cuadrática una partición candidata (Chen y Guestrin, 2016). Por eso XGBoost puede llamarse un método de Newton por etapas.
+
+La cuadrática de segundo orden también explica por qué XGBoost necesita $h_i>0$: si la hessiana es cero o negativa, el denominador de la ganancia no está acotado. Para la pérdida logística, $h_i=p_i(1-p_i)$ siempre es positiva en el interior, pero se aproxima a cero cuando la probabilidad predicha se acerca a 0 o 1, lo que puede hacer inestable el paso.
+
+\subsection{Optimización de hiperparámetros}
+Los hiperparámetros son parámetros que no se aprenden durante el entrenamiento, como la profundidad de los árboles, el número de árboles o la tasa de aprendizaje. Buscarlos es un problema de optimización de caja negra: la función objetivo, el error de validación, no tiene forma cerrada y solo puede evaluarse ajustando un modelo.
+
+La búsqueda en cuadrícula evalúa todas las combinaciones de una malla finita. Su número de ajustes crece como el producto de los tamaños de cada dimensión. La búsqueda aleatoria muestrea combinaciones al azar de distribuciones definidas para cada hiperparámetro. Bergstra y Bengio (2012) muestran que, cuando solo unos pocos hiperparámetros influyen de forma importante en el resultado, la búsqueda aleatoria encuentra buenas configuraciones con menos evaluaciones que la cuadrícula, porque no desperdicia ajustes en dimensiones irrelevantes.
+
+La optimización bayesiana construye un modelo sustituto del error de validación, por ejemplo un proceso gaussiano, y usa una función de adquisición para decidir qué combinación evaluar a continuación. La función de adquisición equilibra explorar regiones inciertas y explotar regiones prometedoras. Snoek et al. (2012) aplican esta idea a la optimización de hiperparámetros de modelos de aprendizaje automático. Optuna (Akiba et al., 2019) es un marco de optimización de hiperparámetros que define el espacio de búsqueda durante la ejecución y puede interrumpir de forma anticipada las pruebas poco prometedoras.
+
+El código de la tesis usa búsqueda en cuadrícula con validación cruzada temporal. La malla es
+\begin{equation}
+\text{param\_grid}=\Big\{\,\text{n\_estimators}\in\{100,200\},\ \text{max\_depth}\in\{3,5,7\},\ \text{learning\_rate}\in\{0.01,0.05,0.1\}\,\Big\}
+\label{eq:malla}
+\end{equation}
+Con $2\times 3\times 3=18$ combinaciones y $K=5$ pliegues de \texttt{TimeSeriesSplit}, la búsqueda ajusta $18\times 5=90$ modelos de validación por algoritmo. Como \texttt{GridSearchCV} usa \texttt{refit=True} por defecto, reajusta después el mejor modelo con todo el conjunto de entrenamiento, lo que suma un ajuste más. El número de ajustes puede verificarse con el siguiente código:
+
+\begin{lstlisting}[language=Python, caption={Conteo de combinaciones y de ajustes de la búsqueda en cuadrícula}, label={lst:malla_conteo}]
+from sklearn.model_selection import ParameterGrid
+
+param_grid = {"n_estimators": [100, 200], "max_depth": [3, 5, 7], "learning_rate": [0.01, 0.05, 0.1]}
+combinaciones = len(list(ParameterGrid(param_grid)))
+ajustes_validacion = combinaciones * 5
+\end{lstlisting}
+
+El resultado es $18$ combinaciones y $90$ ajustes de validación por modelo. Como el código busca la malla para XGBoost y para LightGBM, el total de ajustes de validación es $180$, más dos reajustes finales. Random Forest no se somete a búsqueda: usa valores fijos de $n_{\text{estimators}}=200$ y profundidad máxima 7.
+
+La elección de \texttt{TimeSeriesSplit} es parte de la optimización. Con validación cruzada temporal, cada pliegue entrena con un prefijo cronológico y valida sobre el bloque siguiente, como se describe en la Sección~\ref{sec:val_temporal}. Es una restricción sobre el conjunto de evaluación, no sobre el espacio de parámetros, y evita que la selección use información futura.
+
+\subsection{Programación dinámica: principio de Bellman y memoización}
+La programación dinámica resuelve problemas de decisión secuenciales descomponiéndolos en subproblemas traslapados y guardando sus soluciones. El principio de optimalidad de Bellman establece que una política óptima tiene la propiedad de que, sea cual sea la primera decisión, las decisiones restantes forman una política óptima para el estado que resulta de esa decisión (Bellman, 1957). En su forma recursiva, el valor óptimo de un estado $s$ satisface la ecuación de Bellman:
+\begin{equation}
+V(s)=\min_{a}\Big\{c(s,a)+V\big(T(s,a)\big)\Big\}
+\label{eq:bellman}
+\end{equation}
+donde $c(s,a)$ es el costo inmediato de la acción $a$ y $T(s,a)$ es el estado siguiente. La subestructura óptima es la propiedad de que la solución óptima del problema completo contiene soluciones óptimas de sus subproblemas, y los subproblemas se traslapan cuando la misma subsolución aparece en muchas ramas del cálculo.
+
+La memoización evita recalcular los subproblemas guardando sus resultados. El ejemplo clásico es la sucesión de Fibonacci, $F(n)=F(n-1)+F(n-2)$. Sin memoria, el cálculo recursivo ejecuta un número de llamadas que crece exponencialmente con $n$; con memoria, cada valor se calcula una sola vez y el costo es lineal:
+
+\begin{lstlisting}[language=Python, caption={Fibonacci con memoización mediante un caché de funciones}, label={lst:fibonacci}]
+from functools import lru_cache
+
+@lru_cache(maxsize=None)
+def fibonacci(n):
+    if n < 2:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+\end{lstlisting}
+
+\textit{Ejemplo ilustrativo de camino mínimo.} Considérese una red de tres nodos $A\to B\to C$ con costos $1$ y $2$, y un atajo $A\to C$ con costo $5$. La ecuación de Bellman para el costo mínimo hasta $C$ es $d(C)=\min\{d(B)+2,\ 5\}$, con $d(B)=1$. El resultado es $\min\{3,5\}=3$, y el camino óptimo pasa por $B$. El cálculo de $d(B)$ se reutiliza de forma natural, lo que ilustra la subestructura óptima.
+
+La programación dinámica aparece de forma implícita en dos lugares de la tesis, con cautela. El primero es la construcción de árboles: un árbol de decisión se construye de forma voraz, eligiendo en cada nodo la mejor partición local sin considerar cómo afecta a las particiones futuras. Esta decisión voraz no es óptima en general, pero es computacionalmente factible y produce buenos resultados en la práctica (Breiman et al., 1984). El segundo es el filtro de Kalman, que sustenta la estimación de los modelos ARIMA y SARIMAX en statsmodels. El filtro actualiza recursivamente un estimador del estado oculto a partir del anterior y de la nueva observación, lo que comparte con la programación dinámica la estructura de recursión sobre subproblemas. No es, sin embargo, un problema de Bellman en el sentido estricto: el filtro de Kalman resuelve un problema de estimación lineal y gaussiana, no de decisión con costos (Hamilton, 1994).
+
+El filtro de Kalman, para un modelo de espacio de estados con ecuación de estado $\mathbf{x}_t=F\mathbf{x}_{t-1}+\mathbf{w}_t$ y ecuación de observación $y_t=H\mathbf{x}_t+v_t$, alterna dos pasos. La predicción calcula $\hat{\mathbf{x}}_{t\mid t-1}=F\hat{\mathbf{x}}_{t-1\mid t-1}$ y $P_{t\mid t-1}=FP_{t-1\mid t-1}F^\top+Q$. La actualización calcula la ganancia $K_t=P_{t\mid t-1}H^\top(HP_{t\mid t-1}H^\top+R)^{-1}$, el estado corregido $\hat{\mathbf{x}}_{t\mid t}=\hat{\mathbf{x}}_{t\mid t-1}+K_t(y_t-H\hat{\mathbf{x}}_{t\mid t-1})$ y la covarianza corregida $P_{t\mid t}=(I-K_tH)P_{t\mid t-1}$. La verosimilitud de los modelos ARIMA se obtiene como producto de las densidades de innovación que el filtro produce, lo que conecta el filtro con la estimación por máxima verosimilitud de la Sección~\ref{sec:fund_mat}.
+
+\subsection{Complejidad algorítmica y paralelismo}
+La complejidad de los algoritmos de la tesis determina qué diseños son factibles. Para la búsqueda de hiperparámetros, el costo total es el número de ajustes multiplicado por el costo de cada ajuste. El costo de cada ajuste de un ensamble de $B$ árboles sobre $n$ observaciones y $p$ variables es aproximadamente $B\cdot p\cdot n\log n$ en el caso ingenuo, aunque los métodos de histogramas reducen el término $n\log n$ (Ke et al., 2017; Cormen et al., 2022).
+
+La búsqueda de la tesis tiene $180$ ajustes de validación, cada uno con varios árboles y profundidad limitada, de modo que el costo total es moderado. El argumento de costo, sin embargo, no debe confundirse con el de validez: un diseño que ajusta muchos modelos sobre pocas observaciones aumenta el riesgo de sobreajuste de la selección, como se discutió en la Sección~\ref{sec:limitaciones_marco}.
+
+El paralelismo reparte los ajustes independientes entre varios procesos. En el código, \texttt{n\_jobs=-1} indica que se usen todos los núcleos disponibles en cada \texttt{GridSearchCV}. Como los ajustes de la cuadrícula son independientes entre sí, la ganancia es casi lineal en el número de núcleos hasta el punto en que la memoria o el ancho de banda se saturan (Pedregosa et al., 2011). En cambio, los pasos de un algoritmo secuencial, como el ajuste rodante de ARIMA o la construcción de un árbol nodo por nodo, no pueden paralelizarse directamente sin cambiar el algoritmo.
+
+La vectorización y el almacenamiento columnar, descritos en la Sección~\ref{sec:fund_prog}, también reducen el costo. Los métodos vectorizados aprovechan operaciones optimizadas del hardware y el formato Parquet permite leer solo las columnas necesarias. Ambos son formas de optimización computacional que no cambian el resultado matemático, sino el tiempo y la memoria requeridos para obtenerlo (Harris et al., 2020).
+
+\subsection{Mapa de técnicas de optimización en el código}
+La Tabla~\ref{tab:opt_codigo} resume dónde aparece cada técnica en el script. Para las técnicas que no aparecen en el código se indica explícitamente, para evitar que el lector suponga que el estudio las usó.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Técnicas de optimización y su aparición en el código del pipeline}
+\label{tab:opt_codigo}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}X}
+\toprule
+Técnica & Lugar en el código \\
+\midrule
+Búsqueda en cuadrícula con validación temporal & \texttt{evaluar\_regresores}: \texttt{GridSearchCV} con \texttt{TimeSeriesSplit(n\_splits=5)} para XGBoost y LightGBM \\
+Paralelismo entre ajustes & \texttt{n\_jobs=-1} en ambas búsquedas en cuadrícula \\
+Aproximación de segundo orden & \texttt{XGBRegressor} y \texttt{XGBClassifier}, con gradientes y hessianas por hoja \\
+Boosting con gradiente & \texttt{GradientBoostingRegressor} en \texttt{entrenar\_modelos\_multi\_target}; LightGBM con histogramas y GOSS \\
+Partición voraz de árboles & \texttt{RandomForestRegressor}, \texttt{RandomForestClassifier} y los árboles de boosting \\
+Máxima verosimilitud con filtro de Kalman & \texttt{ARIMA(...).fit()} y \texttt{SARIMAX(...).fit(disp=False)} en \texttt{evaluar\_benchmarks\_tiempo} \\
+Optimización numérica del meta-modelo & \texttt{LogisticRegression()} como \texttt{final\_estimator} en \texttt{StackingClassifier}, con el solver por defecto \\
+Consulta con funciones de ventana & \texttt{AVG OVER (PARTITION BY Nombre)} en la limpieza con DuckDB \\
+Vectorización y operaciones por grupo & Operaciones de pandas y Polars sobre columnas completas, sin ciclos explícitos sobre filas \\
+Almacenamiento columnar & Lectura de \texttt{sofipo\_base\_completa.parquet} mediante DuckDB \\
+Programación dinámica explícita & No aparece en el código \\
+Búsqueda aleatoria, bayesiana u Optuna & No aparecen en el código \\
+Descenso por gradiente estocástico propio & No aparece en el código; los modelos usan sus solvers internos \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+El solver por defecto de \texttt{LogisticRegression} en scikit-learn es un método cuasi-Newton de tipo L-BFGS en las versiones recientes de la biblioteca (Pedregosa et al., 2011). % VERIFICAR: solver por defecto según la versión exacta de scikit-learn utilizada en el pipeline.
+
+\section{Aprendizaje Automático Supervisado}\label{sec:ml}
+
+El aprendizaje automático supervisado busca una función $\hat{f}$ que prediga una variable $y$ a partir de un vector de características $\mathbf{x}$, a partir de ejemplos etiquetados. El interés no está en ajustar bien los datos de entrenamiento, sino en predecir bien observaciones nuevas. Esta sección desarrolla los modelos empleados en la tesis, en el orden en que se apoyan unos en otros, y cierra con resultados teóricos de nivel avanzado sobre la generalización.
 
 \subsection{Fundamentos: riesgo empírico, generalización y regularización}
 Sea $\mathcal{H}$ el espacio de hipótesis, es decir, la familia de funciones admisibles, y sea $L(y,f(\mathbf{x}))$ una función de pérdida que mide el costo de predecir $f(\mathbf{x})$ cuando la respuesta real es $y$. El riesgo esperado de $f$ es $R(f)=\mathbb{E}[L(Y,f(\mathbf{X}))]$, pero no es observable porque la distribución conjunta es desconocida. Con una muestra de tamaño $n$ se calcula el riesgo empírico:
@@ -100,7 +1085,15 @@ La regularización restringe la complejidad de $\hat{f}$ mediante un término de
 \hat{f} = \arg\min_{f\in\mathcal{H}} \Big\{\widehat{R}_n(f) + \lambda\,\Omega(f)\Big\}, \qquad \lambda \geq 0
 \label{eq:regularizacion}
 \end{equation}
-En modelos lineales, la regresión ridge penaliza la suma de cuadrados de los coeficientes (Hoerl y Kennard, 1970), mientras que el lazo penaliza su suma de valores absolutos y puede anular coeficientes (Tibshirani, 1996). En los modelos de árboles aumentados, la regularización opera sobre el número de hojas y sobre los pesos de las hojas, como se muestra en la Sección 2.4.6.
+En modelos lineales, la regresión ridge penaliza la suma de cuadrados de los coeficientes (Hoerl y Kennard, 1970), mientras que el lazo penaliza su suma de valores absolutos y puede anular coeficientes (Tibshirani, 1996). En los modelos de árboles aumentados, la regularización opera sobre el número de hojas y sobre los pesos de las hojas, como se muestra en la Sección~\ref{sec:xgb}.
+
+\subsection{Teoría de la generalización: cota de Vapnik-Chervonenkis}
+Este resultado es de nivel avanzado y explica por qué la complejidad del modelo debe controlarse aun cuando el error de entrenamiento sea pequeño. Sea $h$ la dimensión de Vapnik-Chervonenkis (VC) de $\mathcal{H}$, que mide la capacidad de la clase para separar conjuntos de puntos de todas las formas posibles. Para clasificación binaria, con probabilidad al menos $1-\eta$ sobre la muestra y para todo $f\in\mathcal{H}$:
+\begin{equation}
+R(f) \leq \widehat{R}_n(f) + \sqrt{\frac{h\left(\log\frac{2n}{h}+1\right)-\log\frac{\eta}{4}}{n}}
+\label{eq:vc}
+\end{equation}
+La cota tiene dos términos. El primero es el ajuste en la muestra; el segundo crece con $h$ y decrece con $n$. Un modelo con mucha capacidad necesita más datos para garantizar que su error de entrenamiento se parezca al error real. En un panel con pocas instituciones y periodos limitados, esta condición es exigente, lo que refuerza la necesidad de restringir la complejidad mediante la poda, la regularización y el número limitado de árboles (Vapnik, 2000).
 
 \subsection{Regresión: pérdida cuadrática, descomposición del error y MAE}
 Con pérdida cuadrática, $L(y,\hat{y})=(y-\hat{y})^2$, el riesgo empírico es el error cuadrático medio, y su minimizador poblacional es la media condicional $\mathbb{E}[Y\mid\mathbf{X}]$ (Hastie et al., 2009). La pérdida absoluta, $L(y,\hat{y})=|y-\hat{y}|$, tiene como minimizador la mediana condicional. Por ello, el error absoluto medio y el error cuadrático medio responden a preguntas distintas: el primero mide la desviación típica en unidades originales y es menos sensible a valores extremos, mientras que el segundo penaliza más los errores grandes.
@@ -116,17 +1109,20 @@ El \textit{bagging} (Breiman, 1996) entrena $B$ modelos sobre muestras bootstrap
 \text{Var}\left(\frac{1}{B}\sum_{b=1}^B \hat{f}_b\right) = \rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2
 \label{eq:varianza_ensamble}
 \end{equation}
-La ecuación muestra que el promedio reduce la parte no correlacionada de la varianza, pero no la parte correlacionada. Por eso el \textit{Random Forest} (Breiman, 2001) añade aleatoriedad en las variables: en cada partición considera solo un subconjunto aleatorio de predictores, lo que reduce $\rho$ y aumenta la eficacia del promedio. A cambio, el sesgo puede aumentar ligeramente, pues cada árbol tiene menos opciones de partición.
+La ecuación muestra que el promedio reduce la parte no correlacionada de la varianza, pero no la parte correlacionada. Por eso el \textit{Random Forest} (Breiman, 2001a) añade aleatoriedad en las variables: en cada partición considera solo un subconjunto aleatorio de predictores, lo que reduce $\rho$ y aumenta la eficacia del promedio. A cambio, el sesgo puede aumentar ligeramente, pues cada árbol tiene menos opciones de partición.
 
-\subsection{Boosting: gradient boosting como descenso en el espacio de funciones}
+\subsection{Boosting: gradient boosting como descenso en el espacio de funciones}\label{sec:boosting}
 El \textit{boosting} construye el predictor de forma secuencial. Friedman (2001) lo interpreta como un descenso por gradiente en el espacio de funciones. Sea $F_{m-1}$ el predictor después de $m-1$ iteraciones. En la iteración $m$ se calculan los pseudo-residuos:
 \begin{equation}
 r_{im} = -\left.\frac{\partial L\big(y_i,F(\mathbf{x}_i)\big)}{\partial F(\mathbf{x}_i)}\right|_{F=F_{m-1}}
 \label{eq:pseudo_residuos}
 \end{equation}
-Un árbol $h_m$ se ajusta a estos pseudo-residuos y el predictor se actualiza como $F_m = F_{m-1} + \nu\, h_m$, donde $\nu$ es la tasa de aprendizaje. Con pérdida cuadrática, el pseudo-residuo coincide con el residuo ordinario $y_i-F_{m-1}(\mathbf{x}_i)$. La tasa de aprendizaje pequeña y el número de árboles controlan el compromiso entre sesgo y varianza, y deben seleccionarse mediante validación (Friedman, 2001).
+Un árbol $h_m$ se ajusta a estos pseudo-residuos y el predictor se actualiza como $F_m = F_{m-1} + \nu\, h_m$, donde $\nu$ es la tasa de aprendizaje. Con pérdida cuadrática, el pseudo-residuo coincide con el residuo ordinario $y_i-F_{m-1}(\mathbf{x}_i)$. La tasa de aprendizaje pequeña y el número de árboles controlan el compromiso entre sesgo y varianza, y deben seleccionarse mediante validación (Friedman, 2001). Esta es la misma regla del descenso por gradiente de la Ecuación~\eqref{eq:descenso}, aplicada ahora sobre funciones en lugar de coeficientes.
 
-\subsection{XGBoost: objetivo regularizado y aproximación de segundo orden}
+\subsection{Búsqueda de hiperparámetros con validación cruzada}
+Los hiperparámetros, como la profundidad de los árboles, la tasa de aprendizaje o el número de estimadores, no se aprenden de los datos sino que se fijan antes del entrenamiento. Su selección debe hacerse con validación interna sobre el conjunto de entrenamiento, nunca con el conjunto de prueba (Hastie et al., 2009). Con una malla de $H$ combinaciones y $K$ pliegues, la búsqueda ajusta $H\times K$ modelos, como se explicó en la Sección~\ref{sec:fund_prog}. Cuando las observaciones tienen orden temporal, los pliegues deben respetar ese orden, como se detalla en la Sección~\ref{sec:val_temporal}.
+
+\subsection{XGBoost: objetivo regularizado y aproximación de segundo orden}\label{sec:xgb}
 XGBoost (Chen y Guestrin, 2016) generaliza el boosting con un objetivo regularizado. Para un ensamble aditivo de $T$ árboles:
 \begin{equation}
 \hat{y}_i = \sum_{k=1}^{K} f_k(\mathbf{x}_i), \qquad f_k \in \mathcal{F}
@@ -147,7 +1143,7 @@ con $g_i = \partial_{\hat{y}^{(t-1)}} l$ y $h_i = \partial^2_{\hat{y}^{(t-1)}} l
 \text{Ganancia} = \frac{1}{2}\left[\frac{G_L^2}{H_L+\lambda} + \frac{G_R^2}{H_R+\lambda} - \frac{(G_L+G_R)^2}{H_L+H_R+\lambda}\right] - \gamma
 \label{eq:xgb_ganancia}
 \end{equation}
-La partición se acepta solo si la ganancia es positiva, lo que implementa la poda de forma integrada. XGBoost se empleó como modelo principal de regresión porque captura interacciones no lineales entre variables contables y macroeconómicas sin imponer una forma funcional paramétrica. La pérdida de interpretabilidad directa se atiende mediante valores de Shapley (Sección 2.9).
+La partición se acepta solo si la ganancia es positiva, lo que implementa la poda de forma integrada. XGBoost se empleó como modelo principal de regresión porque captura interacciones no lineales entre variables contables y macroeconómicas sin imponer una forma funcional paramétrica. La pérdida de interpretabilidad directa se atiende mediante valores de Shapley (Sección~\ref{sec:shapley}).
 
 \subsection{LightGBM: crecimiento por hoja, histogramas y muestreo basado en gradientes}
 LightGBM (Ke et al., 2017) introduce tres cambios sobre el boosting por niveles. El primero es el crecimiento \textit{leaf-wise}: en cada paso se divide la hoja con mayor ganancia, en lugar de dividir todas las hojas de un nivel. Esto reduce la pérdida por partición para un mismo número de hojas, aunque aumenta el riesgo de sobreajuste si no se limita la profundidad. El segundo es el uso de histogramas: las variables continuas se agrupan en un número fijo de intervalos, lo que acelera la búsqueda de particiones.% VERIFICAR: autores completos, páginas y URL de Ke et al. (2017) en Advances in Neural Information Processing Systems 30; no verificados en CrossRef por tratarse de actas de NeurIPS.
@@ -180,13 +1176,62 @@ o_t &= \sigma(W_o[h_{t-1},x_t]+b_o) && \text{(compuerta de salida)} \label{eq:ls
 \end{align}
 La celda se actualiza como $C_t = f_t \odot C_{t-1} + i_t \odot \tanh(W_C[h_{t-1},x_t]+b_C)$, y la salida oculta es $h_t = o_t \odot \tanh(C_t)$, donde $\odot$ denota el producto elemento a elemento. La compuerta de olvido, propuesta en su forma moderna por Gers et al. (2000), decide qué información de la celda conservar. Estas expresiones describen el mecanismo; su eficacia en un problema concreto depende de la profundidad temporal disponible por institución, condición que el panel de la tesis no cumple con holgura.
 
-\section{Preparación de Datos de Panel para Aprendizaje Automático}
+\subsection{Aprendizaje profundo: representaciones jerárquicas}
+El aprendizaje profundo entrena redes con varias capas de transformaciones no lineales, de modo que cada capa aprende una representación más abstracta de la entrada. Su éxito en imágenes, texto y voz se debe a que las representaciones útiles se aprenden de forma automática, sin diseño manual de variables (LeCun et al., 2015). Una red profunda es, formalmente, una composición de funciones $f=f_L\circ\cdots\circ f_1$, donde cada $f_\ell$ es una transformación afín seguida de una no linealidad. Su entrenamiento minimiza una pérdida empírica mediante descenso por gradiente, con el cálculo de derivadas por retropropagación, como se describió en la Sección~\ref{sec:optimizacion}.
 
-La preparación de datos determina si la evaluación es válida. En un panel, la transformación de cada variable debe hacerse dentro de cada institución y solo con información disponible en el momento de la predicción. Los rezagos de orden $k$ se definen como $x_{i,t-k}$, y las medias móviles de ventana $w$ como $\frac{1}{w}\sum_{k=0}^{w-1} x_{i,t-k}$, siempre calculadas dentro de la misma institución. La variable objetivo a horizonte de un trimestre se construye como $y_{i,t+1}$ mediante un desplazamiento hacia adelante dentro de cada institución.
+La ventaja del aprendizaje profundo depende de la estructura de los datos. Cuando la información tiene estructura espacial o secuencial, como píxeles o palabras, las redes especializadas, como las convolucionales y las recurrentes, explotan esa estructura. En datos tabulares, en cambio, las columnas no tienen una geometría natural y el orden de las variables es arbitrario. Esta diferencia explica por qué las ventajas del aprendizaje profundo no se trasladan de forma automática a los datos de estados financieros.
+
+La arquitectura LSTM de la Sección~\ref{sec:ml} es un ejemplo de red recurrente diseñada para secuencias. Su relevancia para la tesis es teórica: el panel tiene pocas observaciones por institución, lo que limita la profundidad temporal que una LSTM puede aprender con fiabilidad.
+
+\subsection{Árboles frente a redes en datos tabulares y CatBoost}
+En la práctica, los modelos basados en árboles siguen siendo muy competitivos en datos tabulares, incluso frente a redes profundas bien diseñadas. Grinsztajn et al. (2022) examinan por qué los árboles superan con frecuencia a las redes en datos tabulares y señalan propiedades de esos datos, como la presencia de variables poco informativas y funciones objetivo irregulares, que favorecen a los árboles. Shwartz-Ziv y Armon (2022) comparan modelos de aprendizaje profundo y de boosting en datos tabulares y concluyen que el aprendizaje profundo no sustituye de forma general a los métodos de árboles en esos problemas.
+
+Esta literatura respalda la elección de modelos de boosting como núcleo de la tesis. No garantiza superioridad en cada caso, pero establece que una red profunda no es la opción por defecto para un panel de estados financieros.
+
+CatBoost (Prokhorenkova et al., 2018) es una implementación de boosting que introduce dos mecanismos. El primero es el tratamiento de variables categóricas mediante estadísticas de la variable objetivo calculadas de forma ordenada, lo que busca evitar que la codificación use la propia etiqueta de la observación. El segundo es un esquema de boosting ordenado que reduce el sobreajuste que produce el uso de los mismos datos para calcular los gradientes y ajustar los árboles. CatBoost no se usa en el código de la tesis, pero es una alternativa natural para el identificador de institución, que es una variable categórica de alta cardinalidad y que, como se explicó en la Sección~\ref{sec:fund_prog}, el código trata como entero.
+
+\subsection{Aprendizaje automático y econometría}
+El aprendizaje automático y la econometría responden a preguntas distintas. La econometría busca estimar efectos causales o parámetros interpretables con garantías de inferencia. El aprendizaje automático busca predecir bien observaciones nuevas, aun cuando el modelo no tenga una interpretación causal. Varian (2014) argumenta que las herramientas de predicción de aprendizaje automático pueden complementar a la econometría tradicional en problemas donde la predicción importa, y que la mayoría de los economistas no las han adoptado todavía. Mullainathan y Spiess (2017) estudian cómo los métodos de predicción cambian el análisis econométrico, en particular cuando el número de variables es grande y la selección de variables es parte del problema.
+
+Breiman (2001b) distingue dos culturas de modelado: la de modelar el mecanismo generador de datos y la de optimizar la predicción. Esa distinción es útil para la tesis, porque el objetivo principal es predictivo, aunque se incluyan análisis de atribución con SHAP. Chernozhukov et al. (2018) desarrollan métodos que usan el aprendizaje automático para estimar parámetros causales o estructurales, con correcciones que controlan el sesgo introducido por la regularización de los modelos predictivos. Jordan y Mitchell (2015) ofrecen una visión general del aprendizaje automático como disciplina, con sus supuestos y sus aplicaciones.
+
+Para la tesis, la conclusión es que las predicciones de los modelos no equivalen a efectos causales. Un modelo puede predecir bien el IMOR futuro usando un rezago de la morosidad, sin que esa variable sea la causa de la morosidad futura. Por eso la interpretación de SHAP se limita a la asociación dentro del modelo, como se discute en la Sección~\ref{sec:shapley}.
+
+\subsection{Aprendizaje automático en crédito, interpretabilidad y cajas negras}
+La aplicación del aprendizaje automático al crédito tiene una historia consolidada. Khandani et al. (2010) muestran que los modelos no lineales mejoran la predicción del riesgo de crédito al consumo frente a enfoques tradicionales. Lessmann et al. (2015) comparan clasificadores para scoring y establecen un marco de evaluación comparable entre algoritmos. Fuster et al. (2022) analizan las consecuencias distributivas de usar predicciones más precisas en mercados de crédito, porque una mejor predicción puede cambiar qué grupos reciben crédito. Gu et al. (2020) aplican métodos de aprendizaje automático a la predicción de rendimientos de activos, un problema con relación señal-ruido baja en el que la regularización y la validación cuidadosa son determinantes. Dumitrescu et al. (2022) estudian cómo incorporar efectos no lineales, derivados de árboles, en un modelo logístico de scoring de crédito, buscando conservar la interpretabilidad del modelo lineal. Barboza et al. (2017) comparan modelos de aprendizaje automático con enfoques tradicionales para la predicción de quiebra.
+
+La interpretabilidad es una exigencia específica del crédito. Rudin (2019) argumenta que, en decisiones de alto impacto, conviene usar modelos interpretables por diseño en lugar de explicar después modelos de caja negra. El argumento es que la explicación posterior puede ser incompleta o engañosa. Bussmann et al. (2021) estudian la aplicación de métodos de explicación al riesgo de crédito, con la idea de que una predicción utilizable en la gestión del riesgo debe poder explicarse ante quien la usa. La tesis adopta una postura intermedia: usa modelos de boosting, que no son interpretables por diseño, y los complementa con SHAP, reconociendo sus límites.
+
+La aplicación a la alerta temprana sigue la misma lógica. Beutel et al. (2019) y Holopainen y Sarlin (2017) examinan si el aprendizaje automático mejora la predicción de problemas bancarios frente a los modelos tradicionales, con métricas que dependen del horizonte y del costo de los errores. La evaluación de un sistema de alerta exige, por ello, reportar tanto el desempeño global como la tasa de falsas alertas.
+
+\subsection{Validación cruzada: propiedades y literatura}
+La validación cruzada estima el error de predicción dividiendo la muestra en pliegues, entrenando con parte de ellos y evaluando con el resto. Arlot y Celisse (2010) revisan las propiedades de la validación cruzada, incluido el compromiso entre la varianza de la estimación y el sesgo que introduce el tamaño de entrenamiento, y muestran que la elección del número de pliegues afecta la precisión de la estimación del error.
+
+Tashman (2000) trata la validación de pronósticos de series de tiempo con una lógica temporal: el pronóstico debe evaluarse sobre horizontes futuros con datos que hubieran estado disponibles en su momento. Esa lógica es la base de la validación en ventana expansiva que usa la tesis en \texttt{TimeSeriesSplit}, y que se describe en la Sección~\ref{sec:val_temporal}. La diferencia práctica con la validación aleatoria es grande: en series temporales, el pliegue aleatorio permite entrenar con observaciones posteriores a las de validación, lo que sobrestima el desempeño.
+
+\subsection{Teorema de no free lunch}
+El teorema de no free lunch establece que, si se promedia sobre todos los problemas posibles, ningún algoritmo de aprendizaje supera sistemáticamente a los demás (Wolpert, 1996). La consecuencia práctica no es que todos los algoritmos sean equivalentes, sino que la superioridad de un método depende de supuestos sobre el problema. Un modelo lineal puede superar a un ensamble cuando la relación es aproximadamente lineal y el tamaño muestral es pequeño; un ensamble puede superarlo cuando hay interacciones no lineales.
+
+Por ello, en la tesis la elección de los modelos se justifica con la evidencia del propio panel y con la comparación contra referencias simples, como la regresión lineal y los modelos univariados. Ningún modelo se considera superior por defecto. La conclusión sobre qué modelo funciona mejor es específica de este panel, con este conjunto de variables y esta validación.
+
+\subsection{Microfinanzas y aprendizaje automático en México}
+La aplicación del aprendizaje automático a las microfinanzas mexicanas es un campo reciente. Simonin et al. (2020) abordan el uso de técnicas de aprendizaje automático en el contexto de las microfinanzas, un ámbito en el que el riesgo y la inclusión financiera tienen una dimensión social además de la económica. El presente estudio se inscribe en esa línea, con la diferencia de que el objeto de predicción son las instituciones y no los clientes individuales. % VERIFICAR: alcance exacto de Simonin et al. (2020) y su aplicación a México; la descripción es general y debe confirmarse con la publicación.
+
+La combinación de datos regulatorios de instituciones, variables macroeconómicas y modelos de boosting es, hasta donde se puede documentar en este marco, poco frecuente en la literatura sobre SOFIPOs. Por eso el capítulo presenta los fundamentos completos de cada componente, con el objetivo de que la evaluación de la tesis pueda reproducirse y criticarse con el mismo rigor.
+
+\section{Preparación de Datos de Panel para Aprendizaje Automático}\label{sec:prep_datos}
+
+La preparación de datos determina si la evaluación es válida. En un panel, la transformación de cada variable debe hacerse dentro de cada institución y solo con información disponible en el momento de la predicción. Los rezagos de orden $k$ se definen como $x_{i,t-k}$, y las medias móviles de ventana $w$ como $\frac{1}{w}\sum_{k=0}^{w-1} x_{i,t-k}$, siempre calculadas dentro de la misma institución. La variable objetivo a horizonte de un trimestre se construye como $y_{i,t+1}$ mediante un desplazamiento hacia adelante dentro de cada institución. El código de la Sección~\ref{sec:fund_prog} muestra estas operaciones.
+
+La construcción real de variables del código tiene detalles que conviene conocer para interpretar los resultados. Los rezagos del IMOR se calculan con \texttt{shift} dentro de cada institución, y las medias móviles de 3 y de 6 periodos se calculan con \texttt{rolling\_mean} con \texttt{min\_periods=1}. Esto significa que, al inicio de la historia de cada institución, la media usa menos observaciones de las que indica su nombre. La media móvil también incluye el periodo actual, lo que es válido porque el IMOR de $t$ es conocido al momento de predecir el de $t+1$. Esta elección difiere del ejemplo de la Sección~\ref{sec:fund_prog}, que exige cuatro observaciones completas, y debe reportarse como parte del diseño.
+
+El código define \texttt{IMOR\_futuro} y \texttt{target\_IMOR 1/ (\%)} con el mismo desplazamiento hacia atrás sobre la misma columna, por lo que son columnas idénticas. Esta redundancia no altera el ajuste, pero sí debe evitarse en la documentación del modelo. Las variables de rezago de la morosidad, del nivel de capitalización y del resultado neto se construyen con un solo rezago, \texttt{lag\_}, y el objetivo se construye con \texttt{target\_}. Los predictores de la regresión incluyen la tasa implícita, el nivel de capitalización, la cartera vigente y los gastos de administración del mismo periodo, por lo que su uso como predictor debe justificarse con la disponibilidad de la información en el momento de la predicción.
+
+Dos filtros definen la muestra. El primero conserva solo las instituciones con al menos seis observaciones después de construir los rezagos, lo que asegura historia suficiente para las medias móviles. El segundo elimina las filas con valores faltantes en las variables de rezago y de razón. La combinación de ambos filtros reduce la muestra y puede excluir instituciones pequeñas o recientes, cuyo comportamiento puede diferir del de las instituciones con historia larga. El ROA del código se calcula dividiendo el resultado neto del periodo entre el activo total del mismo periodo, y la razón de cartera a activo usa solo la cartera vigente en el numerador, como se explicó en la Sección~\ref{sec:estados_financieros}.
 
 El riesgo más importante es la fuga de información (\textit{leakage}), que Kaufman et al. (2012) definen como la incorporación, en la construcción del modelo, de información que no estaría disponible al momento de usarlo. Tres prácticas son especialmente delicadas. La primera es la imputación de valores faltantes con estadísticos calculados sobre toda la historia de la serie, pues el valor imputado en $t$ depende de observaciones posteriores. Una alternativa válida es la media expansiva, que usa solo información hasta $t$, o una imputación ajustada únicamente con el conjunto de entrenamiento. La segunda es la normalización: los parámetros de escala deben estimarse con el conjunto de entrenamiento y aplicarse después al de prueba. La tercera es la construcción de variables que dependen solo del tiempo. Una variable de este tipo, compartida por todas las instituciones en un mismo periodo, puede capturar efectos de calendario sin aportar información institucional, y puede ser perfectamente colineal con otra variable si se derivan una de otra.
 
-\section{Validación Temporal y Validación en Paneles}
+\section{Validación Temporal y Validación en Paneles}\label{sec:val_temporal}
 
 En series temporales, la validación cruzada con pliegues aleatorios introduce información futura en el entrenamiento y sobrestima el desempeño. Bergmeir et al. (2018) señalan que la validación cruzada usual puede ser válida bajo supuestos restrictivos, como un modelo autorregresivo puro con errores no correlacionados, y que su uso en otros casos exige cautela. Cerqueira et al. (2020) comparan empíricamente métodos de estimación del desempeño para modelos de pronóstico de series temporales, lo que permite evaluar cómo cambia la estimación según el procedimiento elegido.
 
@@ -194,7 +1239,11 @@ El esquema adecuado es la validación en ventana expansiva (\textit{forward chai
 
 En datos de panel existe una dimensión adicional. Se puede separar en el tiempo, evaluando el pronóstico de periodos futuros para instituciones conocidas, o separar por institución, evaluando el desempeño sobre entidades que no aparecen en el entrenamiento. Ambas separaciones responden a preguntas distintas. La primera mide la capacidad de pronóstico para una institución con historia; la segunda mide la capacidad de generalización a instituciones nuevas. Un diseño riguroso debe reportar ambas o declarar cuál de las dos se evalúa.
 
-\section{Desbalance de Clases y Remuestreo}
+Existen dos variantes de la validación temporal. La ventana expansiva usa un prefijo creciente de la historia para entrenar, mientras que la ventana deslizante usa un bloque de longitud fija que se desplaza en el tiempo. La primera aprovecha toda la historia disponible, pero sus modelos se estiman con tamaños de muestra distintos en cada pliegue; la segunda mantiene el tamaño de entrenamiento constante, a costa de descartar observaciones antiguas. El código usa la ventana expansiva mediante \texttt{TimeSeriesSplit}, con cinco pliegues. Con $n$ observaciones, el primer pliegue entrena con la fracción más antigua y valida sobre el bloque siguiente; el último pliegue entrena con casi todo el prefijo y valida sobre el bloque final. Arlot y Celisse (2010) revisan cómo la elección del número de pliegues cambia el compromiso entre sesgo y varianza de la estimación del error.
+
+La validación temporal también debe respetar el horizonte de predicción. Si la variable objetivo es el IMOR del trimestre siguiente, la última observación de entrenamiento debe ser anterior a la primera de validación por al menos un periodo, de modo que no exista solapamiento entre la información del objetivo y la del entrenamiento. Tashman (2000) enfatiza que la evaluación de pronósticos debe reproducir las condiciones reales de disponibilidad de la información en el momento del pronóstico. Este requisito no siempre se cumple cuando las variables se construyen con ventanas centradas o con imputaciones que usan toda la historia, como se discutió en la Sección~\ref{sec:prep_datos}.
+
+\section{Desbalance de Clases y Remuestreo}\label{sec:desbalance}
 
 En clasificación binaria, cuando una clase es minoritaria, un clasificador puede alcanzar una exactitud alta prediciendo siempre la clase mayoritaria. Las estrategias para mitigar este efecto se agrupan en tres familias: remuestreo, ponderación de clases y ajuste del umbral de decisión. Las dos primeras modifican el entrenamiento; la tercera, la regla de decisión sobre probabilidades predichas. He y Garcia (2009) revisan estas familias y subrayan que la elección de la métrica de evaluación es parte del problema, no un detalle posterior.
 
@@ -207,10 +1256,24 @@ donde $\mathbf{x}_{zi}$ es el vecino seleccionado. La limpieza de vecinos editad
 
 Dos reglas metodológicas son indispensables. La primera es que el remuestreo se aplique solo dentro del conjunto de entrenamiento de cada partición; si se aplica antes de dividir, las observaciones sintéticas contienen información de la prueba. La segunda es que, cuando el remuestreo precede a una validación cruzada interna, como en el stacking, el procedimiento debe repetirse dentro de cada pliegue para no filtrar información entre pliegues (Kaufman et al., 2012).
 
-\section{Métricas de Evaluación}
+La ponderación de clases es la segunda familia. En lugar de cambiar los datos, asigna a cada observación un peso mayor cuando pertenece a la clase minoritaria, de modo que el error sobre esa clase cuente más en la función de pérdida. Con la convención de scikit-learn, el peso de la clase $c$ con $n_c$ observaciones entre $n$ totales y $K$ clases es $w_c=\frac{n}{K\,n_c}$ (Pedregosa et al., 2011). En el código, el Random Forest clasificador usa \texttt{class\_weight="balanced"} con esta convención, mientras que los modelos de boosting del stacking no ponderan y dependen del remuestreo previo.
+
+El sobremuestreo SMOTE tiene variantes que cambian cómo se eligen las observaciones de partida. Fernández et al. (2018) revisan la familia de métodos derivados de SMOTE, que incluyen versiones que concentran la generación en la frontera de decisión o que ajustan el número de sintéticos según la densidad local de la clase minoritaria, y discuten sus ventajas y limitaciones. La tesis usa la versión básica combinada con ENN, que no concentra la generación en ninguna región particular. El código fija \texttt{random\_state=42} en el remuestreo, por lo que el conjunto sintético es reproducible.
+
+Dos efectos del remuestreo deben tenerse presentes. El primero es que cambia la distribución de entrenamiento, por lo que las probabilidades predichas dejan de corresponder a la prevalencia real de la población. Si el modelo se usa después para estimar riesgos, esa distorsión debe corregirse con una recalibración sobre datos no remuestreados (Niculescu-Mizil y Caruana, 2005). El segundo es que, si el remuestreo ocurre antes de validar, la evaluación se infla, como se analiza en la Sección~\ref{sec:limitaciones_marco}.
+
+Un ajuste de umbral es la alternativa más directa cuando se dispone de probabilidades calibradas. Si el costo de un falso negativo es $c_{FN}$ y el de un falso positivo es $c_{FP}$, la regla de decisión óptima predice la clase positiva cuando la probabilidad estimada supera $c_{FP}/(c_{FP}+c_{FN})$. Esta expresión traslada el problema desde la métrica al costo económico del error, que es el criterio relevante para una autoridad supervisora (He y Garcia, 2009).% VERIFICAR: la regla de costo óptimo se deriva de la teoría de decisión bayesiana; se sugiere confirmar la referencia clásica en un texto de teoría de decisión antes de la defensa.
+
+\section{Métricas de Evaluación}\label{sec:metricas}
 
 \subsection{Regresión}
 Para la predicción continua del IMOR futuro se utilizan tres métricas. El error absoluto medio (MAE) es $\frac{1}{n}\sum_{i=1}^n |y_i-\hat{y}_i|$ y se expresa en las unidades de la variable. La raíz del error cuadrático medio (RMSE) es $\sqrt{\frac{1}{n}\sum_{i=1}^n (y_i-\hat{y}_i)^2}$ y penaliza con más fuerza los errores grandes. El coeficiente de determinación es $R^2 = 1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2}$, que mide la proporción de varianza explicada por el modelo respecto a la media muestral. Como $R^2$ depende de la varianza de la muestra de prueba, su comparación entre conjuntos distintos no es directa; por ello se reporta junto con MAE y RMSE.
+
+El MAE y el RMSE dependen de la escala de la variable, por lo que no sirven para comparar pronósticos de series con magnitudes distintas. Hyndman y Koehler (2006) proponen medidas escaladas, como el error absoluto medio escalado, que dividen el error entre el de un pronóstico ingenuo calculado sobre la propia serie. Un valor menor que uno indica que el modelo mejora al pronóstico ingenuo. Esta lógica es importante para la tesis, porque el código compara un MAE de ARIMA y SARIMA calculado sobre tres instituciones con un MAE de los modelos de panel calculado sobre el conjunto de prueba completo, por lo que las cifras no son directamente comparables.
+
+\textit{Ejemplo ilustrativo.} Si un pronóstico tiene MAE de 0.8 puntos sobre una serie cuyo error medio del pronóstico ingenuo, que repite el último valor, es de 1.6 puntos, la razón es $0.8/1.6=0.5$. El modelo reduce a la mitad el error del pronóstico ingenuo.
+
+Las medidas de error de la regresión tienen una limitación adicional: el RMSE se compara entre modelos solo cuando se evalúan sobre las mismas observaciones. La Figura 17 del código resume el MAE de los modelos en una sola barra por modelo, por lo que el lector debe recordar que las barras de ARIMA y SARIMA se obtienen de otro conjunto de observaciones.
 
 \subsection{Clasificación}
 La matriz de confusión agrupa los aciertos y errores de un clasificador binario en verdaderos y falsos positivos y negativos. A partir de ella se definen la exactitud, la precisión (valor predictivo positivo), la exhaustividad o sensibilidad (\textit{recall}), la media armónica $F_1$ de precisión y sensibilidad, y el coeficiente de correlación de Matthews (MCC) (Matthews, 1975):
@@ -220,11 +1283,34 @@ La matriz de confusión agrupa los aciertos y errores de un clasificador binario
 \end{equation}
 Chicco y Jurman (2020) muestran que el MCC resume de forma más fiable el desempeño de un clasificador binario que $F_1$ o la exactitud, porque tiene en cuenta los cuatro cuadrantes de la matriz. La exactitud puede ser engañosamente alta cuando una clase domina, y $F_1$ ignora los verdaderos negativos. Las métricas que dependen de un umbral fijo ocultan cómo se comporta el clasificador en otros umbrales. Para estimar la capacidad de discriminación sin fijar umbral, se usan el área bajo la curva ROC (ROC-AUC) y el área bajo la curva precisión-exhaustividad (PR-AUC). Saito y Rehmsmeier (2015) argumentan que, en conjuntos desbalanceados, la curva precisión-exhaustividad es más informativa que la curva ROC, porque la ROC puede ser optimista cuando los negativos son muy abundantes.
 
+La curva ROC grafica la tasa de verdaderos positivos, $TPR=TP/(TP+FN)$, frente a la tasa de falsos positivos, $FPR=FP/(FP+TN)$, al variar el umbral. Su área tiene una interpretación probabilística: es la probabilidad de que un positivo elegido al azar reciba una puntuación mayor que un negativo elegido al azar. Como $FPR$ se normaliza por el número de negativos, la curva no depende de la prevalencia. Esa misma propiedad la vuelve poco sensible a la cantidad absoluta de falsos positivos cuando los negativos son muy abundantes, por lo que la curva precisión-exhaustividad complementa el análisis.
+
 En riesgo crediticio la exhaustividad tiene un costo asimétrico. Un falso negativo deja pasar una institución en riesgo real, mientras que un falso positivo genera una alerta que no se materializa. Por ello la elección del umbral de decisión debe discutirse con el costo de cada error y no solo con la métrica global.
 
-\section{Interpretabilidad mediante Valores de Shapley}
+La comparación entre métricas de clasificación merece atención adicional. Chicco et al. (2021) comparan el coeficiente de correlación de Matthews con el kappa de Cohen y con el puntaje de Brier en la evaluación de clasificadores binarios, y concluyen que el MCC es más informativo, porque su valor alto exige buen desempeño en las cuatro celdas de la matriz de confusión. La exactitud, en cambio, puede ser alta con un clasificador que siempre predice la clase mayoritaria. Por eso el código reporta exactitud, precisión, exhaustividad, $F_1$, ROC-AUC y MCC en conjunto.
 
-El valor de Shapley (Shapley, 1953) es la contribución promedio de un jugador en un juego cooperativo, promediada sobre todos los órdenes posibles de incorporación. En aprendizaje automático, los jugadores son las variables de entrada y el pago es la predicción del modelo. Lundberg y Lee (2017) proponen SHAP (\textit{SHapley Additive exPlanations}), un marco que descompone la predicción de cada instancia como
+Fawcett (2006) describe la curva ROC y su interpretación como medida de discriminación, así como sus limitaciones con clases desbalanceadas. Davis y Goadrich (2006) establecen la relación entre ambos espacios: una curva domina a otra en el espacio ROC si y solo si la domina en el espacio precisión-exhaustividad. Sin embargo, la precisión depende de la prevalencia de la clase positiva, por lo que los valores numéricos de las áreas bajo ambas curvas no son intercambiables. Estas referencias respaldan el uso conjunto de ROC-AUC y PR-AUC que el código calcula, aunque el código reporta la curva ROC y la curva precisión-exhaustividad como figuras y el valor de PR-AUC no aparece como métrica separada en el diccionario de resultados.
+
+\subsection{Calibración de probabilidades}
+Un clasificador puede ordenar bien las instituciones y aun así asignar probabilidades que no corresponden a frecuencias reales. Un modelo está calibrado si, entre las observaciones con probabilidad predicha $p$, la fracción de positivos observados es cercana a $p$. El \textit{puntaje de Brier} (Brier, 1950) cuantifica el error de calibración y discriminación en conjunto:
+\begin{equation}
+\text{BS} = \frac{1}{n}\sum_{i=1}^n (p_i - y_i)^2
+\label{eq:brier}
+\end{equation}
+Valores menores son mejores. Es el equivalente, para probabilidades, del error cuadrático medio. Su relevancia para la tesis es que los umbrales de alerta propuestos en el Capítulo 8 se interpretan como probabilidades; si el modelo está mal calibrado, un umbral de 0.5 no tiene el significado que se le atribuye.
+
+Niculescu-Mizil y Caruana (2005) comparan la calibración de distintos clasificadores y muestran que modelos con buena capacidad de ordenamiento pueden tener probabilidades mal calibradas; describen además métodos de recalibración posterior, como el escalamiento de Platt y la regresión isotónica. Guo et al. (2017) documentan que las redes profundas modernas tienden a estar sobreconfiadas, es decir, mal calibradas por exceso, y estudian técnicas de recalibración para corregirlo. Para los modelos de árboles de boosting, que el código evalúa, la calibración no está garantizada: las probabilidades de un modelo de clasificación entrenado con remuestreo, como el stacking con SMOTE-ENN, pueden estar desplazadas respecto de la prevalencia real.
+
+Por ello, el puntaje de Brier debe reportarse junto con una verificación de calibración, como un diagrama de confiabilidad que compare la probabilidad media predicha con la frecuencia observada en intervalos de probabilidad. El código no reporta el puntaje de Brier ni un diagrama de calibración; esa ausencia es una limitación para la lectura de los umbrales de alerta.
+
+\section{Interpretabilidad mediante Valores de Shapley}\label{sec:shapley}
+
+El valor de Shapley (Shapley, 1953) es la contribución promedio de un jugador en un juego cooperativo, promediada sobre todos los órdenes posibles de incorporación. Formalmente, para un conjunto de $M$ jugadores y una función de valor $v$ sobre coaliciones $S\subseteq N$, el valor del jugador $j$ es
+\begin{equation}
+\phi_j(v) = \sum_{S\subseteq N\setminus\{j\}} \frac{|S|!\,(M-|S|-1)!}{M!}\,\big[v(S\cup\{j\})-v(S)\big]
+\label{eq:shapley_formula}
+\end{equation}
+donde el peso de cada coalición es la probabilidad de que $j$ llegue justo después de $S$ en un orden aleatorio uniforme de los jugadores. En aprendizaje automático, los jugadores son las variables de entrada y el pago es la predicción del modelo. Lundberg y Lee (2017) proponen SHAP (\textit{SHapley Additive exPlanations}), un marco que descompone la predicción de cada instancia como
 \begin{equation}
 f(\mathbf{x}) = \phi_0 + \sum_{j=1}^M \phi_j(\mathbf{x})
 \label{eq:shap}
@@ -233,18 +1319,26 @@ donde $\phi_0 = \mathbb{E}[f(\mathbf{x})]$ es la predicción base y $\phi_j$ es 
 
 La importancia global se obtiene promediando el valor absoluto de $\phi_j$ sobre el conjunto de observaciones, y la distribución por observación se visualiza mediante gráficas de enjambre. Estas herramientas tienen limitaciones. Los valores dependen del conjunto de referencia usado para representar la ausencia de una variable; cuando las variables están correlacionadas, la atribución puede asignar importancia a variables que no son causas del resultado. Los valores de Shapley cuantifican cómo el modelo utiliza las variables, no cómo funciona el sistema económico subyacente. Por ello, en la tesis SHAP se interpreta como asociación estadística dentro del modelo entrenado.
 
-\section{Validación y Limitaciones Metodológicas del Estudio}
+El cálculo exacto de los valores de Shapley requiere evaluar $2^M$ coaliciones, lo que es impracticable para más de unas decenas de variables. TreeSHAP aprovecha la estructura de los árboles para calcular los valores exactos con un costo que crece polinomialmente con el número de hojas y de profundidad, en lugar de exponencialmente con el número de variables (Lundberg et al., 2020). Esa propiedad es la razón por la que el código puede calcular SHAP sobre el modelo de boosting sin aproximaciones por muestreo.
+
+En el código, el valor SHAP se calcula con \texttt{shap.TreeExplainer} sobre el XGBoost base del stacking, y se usa la matriz de valores para dos gráficas: la importancia global, que promedia el valor absoluto de cada variable, y el enjambre, que muestra la distribución de los valores por observación. La importancia global es la media de $|\phi_j|$ sobre las observaciones de prueba, que es la definición de la Sección~\ref{sec:shapley}. El código guarda esa media en los resultados, lo que permite compararla entre variables, pero no ajusta por correlación entre predictores.
+
+Una advertencia específica del caso de la tesis es que la TIIE\_28 y los Cetes\_28 son tasas de corto plazo fuertemente relacionadas, por lo que la importancia SHAP de cada una debe leerse con cautela, como se explicó en la Sección~\ref{sec:limitaciones_macro}. La atribución es correcta como descripción del modelo y no como evidencia económica.
+
+\section{Validación y Limitaciones Metodológicas del Estudio}\label{sec:limitaciones_marco}
 
 Esta sección describe los límites del diseño de validación que el marco teórico debe reconocer. Cada punto se deriva del código de ejecución del pipeline y se explica con el concepto teórico correspondiente. Estos puntos se atenderán en la revisión de la metodología y de los resultados.
 
 \subsection{Partición train/test no temporal}
 La división entre entrenamiento y prueba se realiza con \texttt{train\_test\_split} y \texttt{shuffle=False} sobre un panel ordenado por institución. Esta opción conserva el orden de las filas, pero no el orden temporal de las observaciones. Por tanto, el 20\% final de las filas no corresponde a un bloque cronológico final de todo el panel: en el análisis previo del panel, ese bloque se concentra en un subconjunto de instituciones y cubre los mismos años que el entrenamiento. El conjunto de prueba no separa, entonces, tiempo ni institución, y la evaluación no equivale a un pronóstico sobre periodos futuros (Bergmeir et al., 2018; Kaufman et al., 2012).% VERIFICAR: número de instituciones en el bloque final de prueba (diez, según el análisis previo); no se verificó contra el archivo parquet.
 
-\subsection{Imputación con información futura}
+\subsection{Imputación con información futura}\label{sec:imputacion}
 La imputación de valores faltantes con el promedio por institución utiliza toda la historia de la institución, incluidos los periodos posteriores a cada observación. Esto introduce fuga de información en el sentido de Kaufman et al. (2012): el valor imputado en $t$ depende de datos que no existían en $t$. La magnitud del sesgo depende de la proporción de valores faltantes y no se cuantificó en este estudio.
 
-\subsection{Variables macroeconómicas sintéticas y colinealidad}
-Las series macroeconómicas de esta implementación no son observaciones oficiales. La serie TIIE\_28 se construyó como una tendencia lineal más ruido gaussiano, y Cetes\_28 se define como TIIE\_28 menos 0.4 puntos. Por construcción, Cetes\_28 es una función exacta de TIIE\_28, lo que implica colinealidad perfecta. Esta relación determinista entre dos variables macroeconómicas impide separar sus efectos, y cualquier contribución atribuida a estas variables mediante SHAP refleja la estructura del generador de datos, no información macroeconómica real. Las series de inflación, actividad económica y tipo de cambio tampoco son observaciones oficiales, y deben tratarse con la misma cautela. Para aplicaciones regulatorias, estas variables deben sustituirse por series oficiales de Banco de México.
+\subsection{Variables macroeconómicas y colinealidad}\label{sec:limitaciones_macro}
+Los resultados de la tesis usan las series oficiales de Banco de México. La TIIE\_28 y los Cetes\_28 son tasas de corto plazo fuertemente relacionadas, aunque ya no son una función exacta una de otra. Esa relación fuerte dificulta separar sus efectos individuales, y la contribución que SHAP atribuye a cada una debe leerse con cautela. Todas las instituciones de un mismo trimestre reciben el mismo valor macroeconómico, por lo que las variables macroeconómicas describen el entorno agregado y no la exposición individual de cada SOFIPO. Además, el IGAE se emplea en nivel y no en variación, lo que puede mezclar su efecto con la tendencia de largo plazo.
+
+Conviene recordar que una ejecución anterior del pipeline usó series sintéticas con colinealidad perfecta entre TIIE\_28 y Cetes\_28, y que sus resultados se descartaron. Esa versión se describe en la Sección~\ref{sec:macro} como antecedente. Los resultados reportados corresponden a las series oficiales descargadas de la API SIE de Banco de México, incluidas las series del INPC y del IGAE que originalmente publica el Instituto Nacional de Estadística y Geografía.
 
 \subsection{Umbral arbitrario de incumplimiento}
 La variable binaria de incumplimiento se define como $\text{Default}_{t+1} = \mathbb{I}(\text{IMOR}_{t+1}>10\%)$. La elección del umbral de 10\% es una decisión de diseño que no se derivó de una teoría ni de una norma. Como el resultado de la clasificación depende del umbral, la conclusión sobre el clasificador debe acompañarse de un análisis de sensibilidad a umbrales alternativos, o de una justificación regulatoria explícita.% VERIFICAR: justificación del umbral de 10\% contra la práctica de supervisión o la literatura de microfinanzas.

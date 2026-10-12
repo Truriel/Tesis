@@ -12,11 +12,11 @@
 \textbf{Bloque} & \textbf{Valores} \\
 \midrule
 EDA & n\_obs\_crudas=1690, n\_inst\_crudas=126, n\_obs\_panel=1189, n\_inst\_panel=46, IMOR media=14.56\%, IMOR std=19.04\% \\
-Regresión & XGBoost: $R^2$=0.6126, MAE=3.29, RMSE=7.97; LightGBM: $R^2$=0.5756; RandomForest: $R^2$=0.5804 \\
-Multi-target & IMOR: GradientBoosting MSE=87.49; NICAP: RandomForest MSE=7.23e12; Resultado Neto: GradientBoosting MSE=9.27e8 \\
-Desbalance & \% clase minoritaria antes=49.11, después de SMOTE-ENN=44.98; $n$ train antes=951, después=289 \\
-Clasificación & Accuracy=88.65\%, Precision=70.00\%, Recall=82.35\%, F1=0.7568, ROC-AUC=0.9148, MCC=0.6873 \\
-SHAP & lag\_IMOR=3.54, lag\_NICAP=1.40, lag\_ResultadoNeto=0.91, Inflación=0.73, IGAE=0.40, TIIE=0.27, USD/MXN=0.15, Cetes=0.00 \\
+Regresión & XGBoost: $R^2$=0.6272, MAE=3.16, RMSE=7.81; LightGBM: $R^2$=0.5756; RandomForest: $R^2$=0.5804 \\
+Multi-target & IMOR: RandomForest MSE=86.42; NICAP: GradientBoosting MSE=6.93e12; Resultado Neto: RandomForest MSE=8.27e8 \\
+Desbalance & \% clase minoritaria antes=49.11, después de SMOTE-ENN=44.60; $n$ train antes=951, después=287 \\
+Clasificación & Accuracy=88.24\%, Precision=69.49\%, Recall=80.39\%, F1=0.7455, ROC-AUC=0.9227, MCC=0.6725 \\
+SHAP & lag\_IMOR=3.71, lag\_NICAP=1.44, lag\_ResultadoNeto=0.88, IGAE=0.43, USD/MXN=0.23, Inflación=0.14, TIIE=0.12, Cetes=0.09 \\
 Benchmarks & ARIMA MAE promedio=1.87\% (3 instituciones); SARIMA MAE promedio=3.12\% \\
 \bottomrule
 \end{tabularx}

@@ -9,15 +9,13 @@ El documento principal es `tesis_claude.tex`, que ahora solo contiene el preámb
 | `tesis_claude.tex` | Archivo maestro: preámbulo y orden de inclusión | 77 |
 | `preliminares/portada_y_preliminares.tex` | Portada, dedicatoria, agradecimientos, resumen, abstract, abreviaturas, índices | 87 |
 | `capitulos/cap01_introduccion.tex` | Capítulo 1. Introducción y marco de contexto | 67 |
-| `capitulos/cap02_marco_teorico.tex` | Capítulo 2. Marco teórico integral | 108 |
+| `capitulos/cap02_marco_teorico.tex` | Capítulo 2. Marco teórico | 1356 |
 | `capitulos/cap03_metodologia.tex` | Capítulo 3. Marco metodológico | 83 |
 | `capitulos/cap04_arquitectura.tex` | Capítulo 4. Arquitectura computacional del sistema | 43 |
 | `capitulos/cap05_analisis_exploratorio.tex` | Capítulo 5. Análisis exploratorio de datos | 73 |
 | `capitulos/cap06_resultados.tex` | Capítulo 6. Resultados de los modelos | 174 |
 | `capitulos/cap07_discusion.tex` | Capítulo 7. Discusión de resultados | 17 |
 | `capitulos/cap08_alerta_temprana.tex` | Capítulo 8. Sistema de alerta temprana | 15 |
-| `capitulos/cap09_implementacion.tex` | Capítulo 9. Implementación y aplicación práctica | 9 |
-| `capitulos/cap10_comparativa_trabajo_futuro.tex` | Capítulo 10. Comparativa internacional y trabajo futuro | 16 |
 | `capitulos/cap11_conclusiones.tex` | Capítulo 11. Conclusiones y recomendaciones | 13 |
 | `bibliografia/bibliografia.tex` | Referencias (APA 7ª edición) | 41 |
 | `bibliografia/glosario.tex` | Glosario | 14 |
@@ -43,3 +41,19 @@ pdflatex -interaction=nonstopmode tesis_claude.tex
 - Los anexos C y D incluyen los scripts `ejecutar_pipeline_completo_ascii.py` y `codigo_unificado_gemini_ascii.py` con `\lstinputlisting`. Esos archivos deben estar en la misma carpeta que el `.tex` para compilar.
 - El texto de cada parte es idéntico a la versión anterior de `tesis_claude.tex`. Solo se hicieron dos correcciones necesarias para compilar: se eliminó un `\begin{thebibliography}{99}` duplicado y se escaparon las `&` de las referencias (`\&`).
 - Los anexos C y D requieren que los scripts `.py` estén en la carpeta del `.tex`. Esos scripts no están en el repositorio.
+- Los capítulos 9 y 10 se eliminaron. La numeración de los demás capítulos de este mapa conserva los nombres de archivo originales.
+
+## Seguridad: token de Banxico
+
+Por cuestiones de seguridad, el token de la API del Sistema de Información Económica de Banco de México no se agrega a este repositorio. Los archivos `*.py`, `*.txt` y `*.json` están en el `.gitignore` precisamente para que el token, los datos y las salidas locales no se publiquen.
+
+Para ejecutar el pipeline en tu computadora, el script `ejecutar_pipeline_completo_ascii.py` busca el token en este orden:
+
+1. La variable de entorno `BANXICO_TOKEN`.
+2. El archivo local `api.txt`, que debe contener el token de 64 caracteres y no se versiona.
+
+Si la descarga desde la API falla, el pipeline se detiene con un error. No existe un respaldo con series simuladas.
+
+## Ejecución del pipeline y figuras
+
+Las figuras se generan con matplotlib a 350 puntos por pulgada (`figure.dpi` y `savefig.dpi`), y el diagrama de Ishikawa también. Se necesitan los paquetes `numpy`, `pandas`, `polars`, `duckdb`, `pyarrow`, `matplotlib`, `xgboost`, `lightgbm`, `scikit-learn`, `statsmodels`, `shap`, `imbalanced-learn` y `requests`. Con las versiones actuales, `shap` requiere NumPy 2.2 o anterior y el script requiere Polars anterior a la versión 2.

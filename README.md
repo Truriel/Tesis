@@ -22,7 +22,6 @@ El documento principal es `tesis_claude.tex`, que ahora solo contiene el preámb
 | `anexos/anexo_A_fragmentos.tex` | Anexo A. Fragmentos comentados del pipeline | 44 |
 | `anexos/anexo_B_metricas.tex` | Anexo B. Métricas reproducidas | 24 |
 | `anexos/anexo_C_codigo.tex` | Anexo C. Código completo del pipeline | 10 |
-| `anexos/anexo_D_codigo_original.tex` | Anexo D. Código original del proyecto | 5 |
 
 Para cambiar el orden de los capítulos o agregar uno nuevo, edita la lista de `\input` en `tesis_claude.tex`.
 
@@ -37,9 +36,9 @@ pdflatex -interaction=nonstopmode tesis_claude.tex
 
 ## Notas
 
-- Los anexos C y D incluyen los scripts `ejecutar_pipeline_completo_ascii.py` y `codigo_unificado_gemini_ascii.py` con `\lstinputlisting`. Esos archivos deben estar en la misma carpeta que el `.tex` para compilar.
+- El anexo C incluye el script `ejecutar_pipeline_completo_ascii.py` con `\lstinputlisting`. Ese archivo debe estar en la misma carpeta que el `.tex` para compilar.
 - El texto de cada parte es idéntico a la versión anterior de `tesis_claude.tex`. Solo se hicieron dos correcciones necesarias para compilar: se eliminó un `\begin{thebibliography}{99}` duplicado y se escaparon las `&` de las referencias (`\&`).
-- Los anexos C y D requieren que los scripts `.py` estén en la carpeta del `.tex`. Esos scripts no están en el repositorio.
+- El anexo C requiere que el script `.py` esté en la carpeta del `.tex`. Ese script no está en el repositorio.
 - Los capítulos 9 y 10 se eliminaron. La numeración de los demás capítulos de este mapa conserva los nombres de archivo originales.
 
 ## Seguridad: token de Banxico

@@ -19,7 +19,6 @@ El documento principal es `tesis_claude.tex`, que ahora solo contiene el preámb
 | `capitulos/cap11_conclusiones.tex` | Capítulo 11. Conclusiones y recomendaciones | 13 |
 | `bibliografia/bibliografia.tex` | Referencias (APA 7ª edición) | 41 |
 | `bibliografia/glosario.tex` | Glosario | 14 |
-| `anexos/guia_defensa.tex` | Guía de preguntas para la defensa | 43 |
 | `anexos/anexo_A_fragmentos.tex` | Anexo A. Fragmentos comentados del pipeline | 44 |
 | `anexos/anexo_B_metricas.tex` | Anexo B. Métricas reproducidas | 24 |
 | `anexos/anexo_C_codigo.tex` | Anexo C. Código completo del pipeline | 10 |
